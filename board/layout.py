@@ -166,8 +166,9 @@ class Point(object):
 class KiCadPCB(object):
   def __init__(self, path):
     self.pcb_path = os.path.abspath(path)
-    self.board = pcbnew.BOARD(self.pcb_path)
-
+    self.board = pcbnew.LoadBoard(self.pcb_path)
+    tracks = self.board.GetTracks()
+    
     self.numlayers = pcbnew.PCB_LAYER_ID_COUNT
 
     self.layertable = {}
@@ -224,26 +225,41 @@ class KiCadPCB(object):
               hid+=1
         print("Hid %i reference labels" % hid)
 
-  def clear_tracks_for_module(self, module): 
-    for pad in module._obj.Pads():
+  def delete_tracks_connected_to_track(self, track):
+    track_start = Point.fromVector2i(track.GetStart())
+    track_end = Point.fromVector2i(track.GetEnd())
+
+    tracks = self.board.GetTracks()
+    for t in tracks:
+      t_start = Point.fromVector2i(t.GetStart())
+      t_end = Point.fromVector2i(t.GetEnd())
+      
+      thresh = .0001
+      d1 = track_start.distance_to(t_start)
+      d2 = track_start.distance_to(t_end)
+      d3 = track_end.distance_to(t_start)
+      d4 = track_end.distance_to(t_end)
+
+      if d1 < thresh or d2 < thresh or d3 < thresh or d4 < thresh:
+        print("    Deleting connected track of length", t_start.distance_to(t_end))
+        self.board.Delete(t)
+
+  def delete_tracks_for_module(self, module): 
+    tracks = self.board.GetTracks()
+    for pad in module.Pads():
       pad_position = Point.fromVector2i(pad.GetPosition())
-      tracks = self.board.GetTracks()
+      print("  Deleting old tracks for module %s pad %s net %s" % (module.GetReference(), pad.GetPadName(), pad.GetNetname()))
       for track in tracks:
-        track_start = Point.fromVector2i(track.GetStart())
-        track_end = Point.fromVector2i(track.GetEnd())
-        track_net = track.GetNet()
-        thresh = .0001
-        d1 = pad_position.distance_to(track_start)
-        d2 = pad_position.distance_to(track_end)
-
+        thresh = 0.0001
+        d1 = pad_position.distance_to(track.GetStart())
+        d2 = pad_position.distance_to(track.GetEnd())
         if d1 < thresh or d2 < thresh:
+          self.delete_tracks_connected_to_track(track)
+        
 
-          print("Deleting old track for module %s pad %s net %s" % (module.reference, pad.GetPadName(), track_net.GetNetname()))
-          self.board.Delete(track)
 
-          vias = []
-          vias.append(self.board.GetViaByPosition(track_start.vector2i()))
-          vias.append(self.board.GetViaByPosition(track_end.vector2i()))
+          # vias.append(self.board.GetViaByPosition(track_start.vector2i()))
+          # vias.append(self.board.GetViaByPosition(track_end.vector2i()))
 
 
           # FIXME: Deleting a via crashes inside kicad API
@@ -328,7 +344,8 @@ class KiCadPCB(object):
   def add_via(self, position, net):
     via = pcbnew.PCB_VIA(self.board)
     via.SetPosition(position)
-    via.SetLayerPair(self.layertable["F.Cu"], self.layertable["B.Cu"])
+    via.SetViaType(pcbnew.VIATYPE_BLIND_BURIED)
+    via.SetLayerPair(self.layertable["F.Cu"], self.layertable["In1.Cu"])
     via.SetDrill(int(0.254 * IU_PER_MM))
     via.SetWidth(int(0.4064 * IU_PER_MM))
     via.SetNet(net)
@@ -344,8 +361,12 @@ class PCBLayout(object):
   edge_cut_line_thickness = 0.05
   pixel_pad_map = {"1": "4"}
   pixel_pad_names = {"GND": "3", "+5V": "2"}
-  drawPixelLinesOnly = False
   
+  groundViaAngle = 3*pi/4
+  groundViaDistance = 0.5
+  vccTraceDistance = 0.2
+  vccTraceAngle = -pi/4
+
   ####
 
   def __init__(self, path):
@@ -354,7 +375,7 @@ class PCBLayout(object):
 
   prev_series_pixel = None
   pixel_prototype = None
-  series_pixel_count = 1
+  series_pixel_count = 0
 
   def drawSegment(self, start, end, layer='F.Silkscreen', width=0.15):
     if type(start) is tuple:
@@ -418,8 +439,44 @@ class PCBLayout(object):
         self.drawSegment(prevPoint,rotated,layer,0.05)
       prevPoint = rotated
 
-  def placeSeriesPixel(self, point, orientation, allowOverlaps=True, alignOverlaps=True):
-    reference = "D%i" % self.series_pixel_count
+  ### ------------------------------------------------------- ###
+
+  def get5VTraceEnd(self, pad, orientation):
+    return Point(pad.GetPosition()).polar_translated(self.vccTraceDistance, self.vccTraceAngle-orientation)
+
+  def connectPixels(self, fromPixel, toPixel):
+    if not args.skip_traces:
+      for pad in toPixel.Pads():
+        if pad.GetPadName() == self.pixel_pad_names['+5V']:
+          # connect +5V from previous
+          prevPad = [pad for pad in fromPixel.Pads() if pad.GetPadName() == self.pixel_pad_names['+5V']][0]
+          prevEnd = self.get5VTraceEnd(prevPad, fromPixel.GetOrientation().AsRadians())
+          end = self.get5VTraceEnd(pad, toPixel.GetOrientation().AsRadians())
+          self.kicadpcb.add_copper_trace(prevEnd.vector2i(), end.vector2i(), pad.GetNet())
+
+      # Add data tracks from the previous pixel
+      for prev_pad in fromPixel.Pads():
+        if prev_pad.GetPadName() in self.pixel_pad_map:
+          # tracks = self.kicadpcb.board.TracksInNet(prev_pad.GetNet().GetNetCode())
+          # if tracks:
+          #   # skip pad, already has traces
+          #   if args.verbose:
+          #     print("Skipping pad, already has {} tracks: {}".format(len(tracks), prev_pad.GetPadName()))
+          #   continue
+
+          # for net in board.TracksInNet(prev_pad.GetNet().GetNet()):
+          #   board.Delete(t)
+
+          # then connect the two pads
+          for pad in toPixel.Pads():
+            # print("    pad name:", pad.GetPadName())
+            if pad.GetPadName() == self.pixel_pad_map[prev_pad.GetPadName()]:
+              start = prev_pad.GetPosition()
+              end = pad.GetPosition()
+              print("Adding track from pixel {} pad {} to pixel {} pad {}".format(fromPixel.GetReference(), prev_pad.GetPadName(), toPixel.GetReference(), pad.GetPadName()))
+              self.kicadpcb.add_copper_trace(start, end, pad.GetNet())
+
+  def placePixel(self, reference, point, orientation, allowOverlaps=True, alignOverlaps=True):
     print("Place ", reference)
     
     if self.pixel_prototype is None:
@@ -427,14 +484,13 @@ class PCBLayout(object):
       self.pixel_prototype = pcbnew.FootprintLoad(str(Path(__file__).parent.joinpath('kicad_footprints.pretty').resolve()), "ws2812b_1010")
       self.pixel_prototype.SetLayer(self.kicadpcb.layertable["F.Cu"])
 
-    # if self.prev_series_pixel is not None:
-    #   self.drawSegment(Point.fromWxPoint(self.prev_series_pixel.GetPosition()), point, width = 0.1)
-
     absPoint = self.center + point
 
     if not allowOverlaps:
       overlapThresh = 0.8
       for fp in self.kicadpcb.board.GetFootprints():
+        if not fp.GetReference().startswith("D"):
+          continue
         # print(fp, Point(fp.GetPosition()), fp.GetOrientation())
         fpPoint = Point(fp.GetPosition())
         fpOrientation = fp.GetOrientation().AsRadians()
@@ -460,7 +516,7 @@ class PCBLayout(object):
                   track.SetEnd(fp.Pads()[padNum].GetPosition())
           else:
             print("Skipping pixel", reference, ", due to overlap")
-          return
+          return None
 
     print("Placing pixel %s at point %s (relative center %s) orientation %f" % (reference, point, self.center, orientation));
     pixel = pcbnew.FOOTPRINT(self.pixel_prototype)
@@ -470,59 +526,35 @@ class PCBLayout(object):
     # module.position = (point + self.center).point2d()
     pixel.SetOrientation(pcbnew.EDA_ANGLE(orientation, pcbnew.RADIANS_T))
     pixel.Reference().SetVisible(False)
-    if self.drawPixelLinesOnly:
-      if self.prev_series_pixel is not None:
-        self.drawSegment(Point.fromVector2i(self.prev_series_pixel.GetPosition()) - self.center, point, width = 0.35)
-    else:
-      self.kicadpcb.board.Add(pixel)
-    
-    self.series_pixel_count += 1
+    self.kicadpcb.board.Add(pixel)
 
-    for pad in pixel.Pads():
-      if not args.skip_traces:
+    if not args.skip_traces:
+      for pad in pixel.Pads():
         if pad.GetPadName() == self.pixel_pad_names['GND']:
           # draw trace outward from ground
-          end = Point(pad.GetPosition()).polar_translated(0.6, 3*pi/4-orientation).vector2i()
+          end = Point(pad.GetPosition()).polar_translated(self.groundViaDistance, self.groundViaAngle-orientation).vector2i()
           self.kicadpcb.add_copper_trace(pad.GetPosition(), end, pad.GetNet())
 
           # add a via
           self.kicadpcb.add_via(end, pad.GetNet())
         elif pad.GetPadName() == self.pixel_pad_names['+5V']:
-          def get5VTraceEnd(pad, orientation):
-            return Point(pad.GetPosition()).polar_translated(0.2, -pi/4-orientation)
           # draw trace outward from 5V
-          end = get5VTraceEnd(pad, orientation)
+          end = self.get5VTraceEnd(pad, orientation)
           self.kicadpcb.add_copper_trace(pad.GetPosition(), end.vector2i(), pad.GetNet())
-          # and connect +5V from previous
-          if self.prev_series_pixel is not None:
-            prevPad = [pad for pad in self.prev_series_pixel.Pads() if pad.GetPadName() == self.pixel_pad_names['+5V']][0]
-            prevEnd = get5VTraceEnd(prevPad, self.prev_series_pixel.GetOrientation().AsRadians())
-            self.kicadpcb.add_copper_trace(prevEnd.vector2i(), end.vector2i(), pad.GetNet())
 
-    # Add tracks from the previous pixel, connecting pad 5 to pad 2 and pad 4 to pad 3
-    if not args.skip_traces and self.prev_series_pixel is not None:
-      for prev_pad in self.prev_series_pixel.Pads():
-        if prev_pad.GetPadName() in self.pixel_pad_map:
-          # tracks = self.kicadpcb.board.TracksInNet(prev_pad.GetNet().GetNetCode())
-          # if tracks:
-          #   # skip pad, already has traces
-          #   if args.verbose:
-          #     print("Skipping pad, already has {} tracks: {}".format(len(tracks), prev_pad.GetPadName()))
-          #   continue
 
-          # for net in board.TracksInNet(prev_pad.GetNet().GetNet()):
-          #   board.Delete(t)
+    return pixel
 
-          # then connect the two pads
-          for pad in pixel.Pads():
-            # print("    pad name:", pad.GetPadName())
-            if pad.GetPadName() == self.pixel_pad_map[prev_pad.GetPadName()]:
-              start = prev_pad.GetPosition()
-              end = pad.GetPosition()
-              print("Adding track from pixel {} pad {} to pixel {} pad {}".format(self.prev_series_pixel.GetReference(), prev_pad.GetPadName(), pixel.GetReference(), pad.GetPadName()))
-              self.kicadpcb.add_copper_trace(start, end, pad.GetNet())
+  def placeSeriesPixel(self, point, orientation, allowOverlaps=True, alignOverlaps=True):
+    reference = "D%i" % (self.series_pixel_count+1)
+    
+    placedPixel = self.placePixel(reference, orientation, allowOverlaps, alignOverlaps)
+    if placedPixel is not None:
+      self.series_pixel_count += 1
+      if self.prev_series_pixel is not None:
+        self.connectPixels(self.prev_series_pixel, placedPixel)
 
-    self.prev_series_pixel = pixel
+      self.prev_series_pixel = placedPixel
 
   def doLayout(self, args):
     if args.delete_all_traces:
@@ -558,9 +590,8 @@ class PCBLayout(object):
     for fp in self.kicadpcb.board.GetFootprints():
       if re.match("^D\d+$",fp.GetReference()):
         print("Removing old footprint for pixel %s" % fp.GetReference())
+        self.kicadpcb.delete_tracks_for_module(fp)
         self.kicadpcb.board.Delete(fp)
-    
-    self.kicadpcb.deleteAllTraces()
   
   def decorateSilkScreen(self):
     pass
@@ -573,19 +604,13 @@ class LayoutPenta(PCBLayout):
   baseRotate = pi/2
   edgeRadius = 18.7#mm
   circleRadius = 17#mm
-  # pixelSpacing = 3.810
   pointCornerSpread = 0.014
   
-
   def drawEdgeCuts(self):
     super().drawEdgeCuts()
-    
-    # segments = 1200
     self.kicadpcb.draw_circle(self.center, self.edgeRadius, 'Edge.Cuts', self.edge_cut_line_thickness)
-
     
   def placePixels(self):
-    # self.drawPixelLinesOnly = False
     super().placePixels()
 
     # # remove previous tracks
@@ -593,39 +618,74 @@ class LayoutPenta(PCBLayout):
 
     # for module in modules.values():
     #   if module.reference.startswith('D'):
-    #     clear_tracks_for_module(module)
+    #     delete_tracks_for_module(module)
+    def ft(frm,to):
+      inc = -1 if to<frm else 1
+      return range(frm, to+inc,inc)
+    def flatten(lst):
+      flat_list = []
+      for item in lst:
+          if isinstance(item, (list, tuple, set, range, range)):
+              flat_list.extend(flatten(item))
+          else:
+              flat_list.append(item)
+      return flat_list
+
+    def unique(l):
+      return len(l) == len(set(l))
+    
+    # this just serves to reorder the pixel placement from the simple programmatic placement below to a more convenient wiring order
+  # placementOrder = [ft(104,108),ft(99,103),ft(118,122),ft(112,109),ft(98,95),ft(84,81),ft(70,66),ft(125,123),ft(113,117),ft(61,65),ft(126,130),ft(76,80),ft(71,75),ft(90,94),ft(85,89),ft(37,60),ft(1,36)]
+    placementOrder = [ft(99,103),ft(94,98),ft(113,117),ft(107,104),ft(93,90),ft(79,76),ft(65,61),ft(120,118),ft(108,112),ft(56,60),ft(121,125),ft(71,75),ft(66,70),ft(85,89),ft(80,84),ft(34,55),ft(1,33)]
+    placementOrder = flatten(placementOrder)
+    print(sorted(placementOrder))
+    assert(unique(placementOrder))
+    assert(len(placementOrder)==125)
+    placementOrderMap = [None] * len(placementOrder)
+    for i in range(len(placementOrder)):
+      placementOrderMap[placementOrder[i]-1] = i+1
+
     print("Placing Circle...")
-    circlePixels = 60
+    circlePixels = 55
     for i in range(circlePixels):
       pos = Point(self.circleRadius * cos(2*pi*i/circlePixels + self.baseRotate), self.circleRadius * sin(2*pi*i/circlePixels + self.baseRotate))
-      orientation = -2*pi*i/circlePixels + 3*pi/4
-      self.placeSeriesPixel(pos, orientation + self.baseRotate, allowOverlaps=False)
+      orientation = -2*pi*i/circlePixels + 3*pi/4 + pi
+      reference = "D%i" % placementOrderMap[self.series_pixel_count]
+      # reference = "D%i" % self.series_pixel_count
 
-    self.seriesPixelDiscontinuity()
+      pixel = self.placePixel(reference, pos, orientation + self.baseRotate, allowOverlaps=False)
+      if pixel is not None:
+        if self.prev_series_pixel is not None:
+          self.connectPixels(self.prev_series_pixel, pixel)
+        self.prev_series_pixel = pixel
+        self.series_pixel_count+=1
+
+    # self.seriesPixelDiscontinuity()
 
     print("Placing Penta...")
 
     penta = 5
     for i in range(penta):
-      linePixels = 17
-      
-      
       segStart = Point(self.circleRadius * cos(2*pi*(i+self.pointCornerSpread)/penta + self.baseRotate), 
                        self.circleRadius * sin(2*pi*(i+self.pointCornerSpread)/penta + self.baseRotate))
       segEnd = Point(self.circleRadius * cos(2*pi*(i+2-self.pointCornerSpread)/penta + self.baseRotate), 
                      self.circleRadius * sin(2*pi*(i+2-self.pointCornerSpread)/penta + self.baseRotate))
+      
+      linePixels = 17
       for p in range(linePixels):
         if p == 0 or p == linePixels-1:
           # don't realign overlapping circle pixels
           continue
         pos = segStart.lerp_to(segEnd, p/(linePixels-1))
         orientation = -2*pi*(i+1)/penta - pi/4
-        # Point().polar_translated(0.2, -pi/4-orientation)
-        self.placeSeriesPixel(pos, orientation + self.baseRotate, allowOverlaps=False)
-
-      self.seriesPixelDiscontinuity()
-    
-    
+        reference = "D%i" % placementOrderMap[self.series_pixel_count]
+        # reference = "D%i" % self.series_pixel_count
+        pixel = self.placePixel(reference, pos, orientation + self.baseRotate, allowOverlaps=False)
+        if pixel is not None:
+          if self.prev_series_pixel is not None:
+            self.connectPixels(self.prev_series_pixel, pixel)
+          self.prev_series_pixel = pixel
+          self.series_pixel_count+=1
   
   def insertFootprint(self, name, point, layer="F.Silkscreen"):
     for fp in self.kicadpcb.board.GetFootprints():
@@ -647,8 +707,6 @@ class LayoutPenta(PCBLayout):
     for i in range(guides):
       theta = i * 2 * pi/guides
       self.drawSegment((0,0), circle_pt(self.baseRotate + theta, self.edgeRadius), width=0.05)
-
-
 
 class Timing(object):
   @classmethod

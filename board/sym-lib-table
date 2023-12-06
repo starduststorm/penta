@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "penta")(type "KiCad")(uri "${KIPRJMOD}/penta.kicad_sym")(options "")(descr ""))
+)
