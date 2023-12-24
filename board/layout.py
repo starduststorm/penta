@@ -548,7 +548,7 @@ class PCBLayout(object):
   def placeSeriesPixel(self, point, orientation, allowOverlaps=True, alignOverlaps=True):
     reference = "D%i" % (self.series_pixel_count+1)
     
-    placedPixel = self.placePixel(reference, orientation, allowOverlaps, alignOverlaps)
+    placedPixel = self.placePixel(reference, point, orientation, allowOverlaps, alignOverlaps)
     if placedPixel is not None:
       self.series_pixel_count += 1
       if self.prev_series_pixel is not None:
