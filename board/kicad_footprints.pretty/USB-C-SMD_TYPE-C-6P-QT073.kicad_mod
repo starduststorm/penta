@@ -165,30 +165,6 @@
 			)
 		)
 	)
-	(pad "7" smd rect
-		(at -5.32 1.82 90)
-		(size 1.4 2)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "644c95b2-f13c-41dc-9af1-e168a4ddea65")
-	)
-	(pad "7" smd rect
-		(at -5.27 -1.77)
-		(size 2.2 1)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "16e5838a-bb88-47db-abea-27b5aef77ff8")
-	)
-	(pad "7" smd rect
-		(at 5.27 -1.77)
-		(size 2.2 1)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "49fae672-3dc2-49f4-82da-0ec807e6dfe0")
-	)
-	(pad "7" smd rect
-		(at 5.32 1.82 90)
-		(size 1.4 2)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "5cda8c24-8553-43f6-8019-468b6d7d3b0b")
-	)
 	(pad "A5" smd rect
 		(at -0.5 -1.82)
 		(size 0.7 1.3)
@@ -224,6 +200,30 @@
 		(size 0.9 1.3)
 		(layers "F.Cu" "F.Paste" "F.Mask")
 		(uuid "b9f7c882-c20d-4b67-86da-b5b5069f7506")
+	)
+	(pad "S1" smd rect
+		(at -5.32 1.82 90)
+		(size 1.4 2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "644c95b2-f13c-41dc-9af1-e168a4ddea65")
+	)
+	(pad "S1" smd rect
+		(at -5.27 -1.77)
+		(size 2.2 1)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "16e5838a-bb88-47db-abea-27b5aef77ff8")
+	)
+	(pad "S1" smd rect
+		(at 5.27 -1.77)
+		(size 2.2 1)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "49fae672-3dc2-49f4-82da-0ec807e6dfe0")
+	)
+	(pad "S1" smd rect
+		(at 5.32 1.82 90)
+		(size 1.4 2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(uuid "5cda8c24-8553-43f6-8019-468b6d7d3b0b")
 	)
 	(model "${KIPRJMOD}/kicad_footprints.pretty/USB-C-SMD_TYPE-C-6P-QT073.step"
 		(offset

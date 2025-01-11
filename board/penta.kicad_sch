@@ -5,6 +5,108 @@
 	(uuid "2e8b15b9-33da-4001-b66c-591b57065bcb")
 	(paper "A4")
 	(lib_symbols
+		(symbol "Connector:TestPoint"
+			(pin_numbers hide)
+			(pin_names
+				(offset 0.762) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "TP"
+				(at 0 6.858 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "TestPoint"
+				(at 0 5.08 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 5.08 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 5.08 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "test point"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "test point tp"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "Pin* Test*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "TestPoint_0_1"
+				(circle
+					(center 0 3.302)
+					(radius 0.762)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "TestPoint_1_1"
+				(pin passive line
+					(at 0 0 90)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
 		(symbol "Connector:USB_C_Receptacle_PowerOnly_6P"
 			(pin_names
 				(offset 1.016)
@@ -2047,6 +2149,12 @@
 		(uuid "00dbded3-6c88-487a-95ec-e85a6314f854")
 	)
 	(junction
+		(at 116.84 113.03)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "014c935b-e3b8-4ca4-9e6a-c880d6500105")
+	)
+	(junction
 		(at 382.27 49.53)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3137,16 +3245,8 @@
 		(uuid "0c00a3df-40d8-430f-a275-34eac9902dcd")
 	)
 	(no_connect
-		(at 213.36 99.06)
-		(uuid "22def57a-ec21-4b18-a301-32243f9e8933")
-	)
-	(no_connect
 		(at 194.31 64.77)
 		(uuid "36681132-1a94-4afd-8824-42bd8fe6f119")
-	)
-	(no_connect
-		(at 170.18 91.44)
-		(uuid "418f853b-949b-4660-85a0-4be3ea672e53")
 	)
 	(no_connect
 		(at 170.18 87.63)
@@ -3157,20 +3257,12 @@
 		(uuid "645ea79c-c52c-4ab4-8848-70dd34e13346")
 	)
 	(no_connect
-		(at 170.18 83.82)
-		(uuid "6e748a3f-eeaf-4d42-b826-8e767c1a3bd8")
-	)
-	(no_connect
 		(at 405.13 266.7)
 		(uuid "7773567f-6983-4d63-8693-7b2be8015e1b")
 	)
 	(no_connect
 		(at 189.23 64.77)
 		(uuid "9fe81104-6c99-471a-a190-938f26763935")
-	)
-	(no_connect
-		(at 170.18 76.2)
-		(uuid "ceccac22-11a6-43b8-80e5-4125695c6119")
 	)
 	(no_connect
 		(at 185.42 64.77)
@@ -3335,6 +3427,16 @@
 			(type default)
 		)
 		(uuid "19a3adc9-6b70-4fdc-8b43-962b29e8a058")
+	)
+	(wire
+		(pts
+			(xy 161.29 91.44) (xy 161.29 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1b2994ed-7a48-4024-a5d2-2bb318d700df")
 	)
 	(wire
 		(pts
@@ -3718,6 +3820,16 @@
 	)
 	(wire
 		(pts
+			(xy 166.37 76.2) (xy 170.18 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3a013b0c-5de2-4093-a075-1c41ea6dafe8")
+	)
+	(wire
+		(pts
 			(xy 427.99 90.17) (xy 443.23 90.17)
 		)
 		(stroke
@@ -4038,6 +4150,16 @@
 	)
 	(wire
 		(pts
+			(xy 170.18 91.44) (xy 161.29 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "62710fe7-dfe7-4048-92c2-88b959df5f26")
+	)
+	(wire
+		(pts
 			(xy 412.75 250.19) (xy 427.99 250.19)
 		)
 		(stroke
@@ -4298,6 +4420,16 @@
 	)
 	(wire
 		(pts
+			(xy 213.36 99.06) (xy 222.25 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7eb45d14-f827-42ab-bf7f-da8bec1dd673")
+	)
+	(wire
+		(pts
 			(xy 382.27 90.17) (xy 397.51 90.17)
 		)
 		(stroke
@@ -4355,6 +4487,16 @@
 			(type default)
 		)
 		(uuid "83b6122a-1ed3-4d62-adfc-8899e0372e70")
+	)
+	(wire
+		(pts
+			(xy 116.84 102.87) (xy 116.84 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "83cb4d75-1ab4-4677-878b-b5078f2aaf13")
 	)
 	(wire
 		(pts
@@ -4655,6 +4797,16 @@
 			(type default)
 		)
 		(uuid "a45180d7-ee1e-4e00-8a6c-fa11a442f86b")
+	)
+	(wire
+		(pts
+			(xy 166.37 71.12) (xy 166.37 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a4fc8bbe-61b7-4d71-8e6a-a3dd19c77af3")
 	)
 	(wire
 		(pts
@@ -4978,6 +5130,16 @@
 	)
 	(wire
 		(pts
+			(xy 116.84 113.03) (xy 111.76 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cd6d3764-9e8f-4a1a-93b7-bc622d1fce3d")
+	)
+	(wire
+		(pts
 			(xy 412.75 59.69) (xy 427.99 59.69)
 		)
 		(stroke
@@ -5065,6 +5227,16 @@
 			(type default)
 		)
 		(uuid "d4afaafd-1570-4ec7-ae8e-f2cebb6959e8")
+	)
+	(wire
+		(pts
+			(xy 124.46 113.03) (xy 116.84 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d5840e66-4ce0-4486-9e03-60a6b0221b39")
 	)
 	(wire
 		(pts
@@ -5549,6 +5721,17 @@
 		)
 		(uuid "5a4f5b02-4dca-4000-89b6-915f919f0102")
 	)
+	(label "TOUCH3"
+		(at 213.36 99.06 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "64b2bfc3-d69a-4fef-be7a-df9fbfaf1512")
+	)
 	(label "BCLK"
 		(at 213.36 95.25 0)
 		(fields_autoplaced yes)
@@ -5559,6 +5742,28 @@
 			(justify left bottom)
 		)
 		(uuid "6f83e723-0034-4697-8bfb-5c5fbe922698")
+	)
+	(label "TOUCH1"
+		(at 166.37 76.2 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "77a340ff-1e28-43da-a45d-4aa4bf42c902")
+	)
+	(label "TOUCH2"
+		(at 170.18 91.44 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "9e7e22da-15c7-4bbe-bd40-e09ce3e04da2")
 	)
 	(label "LRCLK"
 		(at 213.36 87.63 0)
@@ -5692,6 +5897,81 @@
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
 					(reference "D64")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 161.29 90.17 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "04bdb7c3-e6d9-4774-922c-dc9f04ca09a7")
+		(property "Reference" "TP2"
+			(at 156.464 86.106 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TestPoint"
+			(at 151.13 88.392 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "penta:ScrewTouchHole"
+			(at 166.37 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 166.37 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "test point"
+			(at 161.29 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" ""
+			(at 161.29 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "4e477d7c-5b19-4f61-866c-5ddd35d23f33")
+		)
+		(instances
+			(project "penta"
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "TP2")
 					(unit 1)
 				)
 			)
@@ -7372,6 +7652,81 @@
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
 					(reference "#PWR012")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 124.46 113.03 180)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "264b4eaa-2a15-475d-ab8a-3608c6d04334")
+		(property "Reference" "TP3"
+			(at 129.286 117.094 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TestPoint"
+			(at 134.62 114.808 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "penta:ScrewTouchHole"
+			(at 119.38 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 119.38 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "test point"
+			(at 124.46 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" ""
+			(at 124.46 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "a97e31d8-2b37-48f6-ba80-a6d54b02f83e")
+		)
+		(instances
+			(project "penta"
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "TP3")
 					(unit 1)
 				)
 			)
@@ -12596,6 +12951,81 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 222.25 99.06 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "7ff561dc-e1d6-4359-9ea1-8bc0369777f1")
+		(property "Reference" "TP5"
+			(at 223.266 96.012 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TestPoint"
+			(at 223.266 98.044 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "penta:ScrewTouchHole"
+			(at 227.33 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 227.33 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "test point"
+			(at 222.25 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" ""
+			(at 222.25 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "1862407d-6861-45d3-bab3-81861b866c6d")
+		)
+		(instances
+			(project "penta"
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "TP5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "penta:WS2812B-1010")
 		(at 458.47 106.68 0)
 		(unit 1)
@@ -15549,6 +15979,81 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 166.37 71.12 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "ad8e3ba5-7c36-4f74-949f-2bcdeda75cb1")
+		(property "Reference" "TP1"
+			(at 161.544 67.056 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TestPoint"
+			(at 156.21 69.342 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "penta:ScrewTouchHole"
+			(at 171.45 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 171.45 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "test point"
+			(at 166.37 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" ""
+			(at 166.37 71.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "022089e4-fb6d-4e9e-9fb3-220667e3ac68")
+		)
+		(instances
+			(project ""
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "TP1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:+5V")
 		(at 330.2 139.7 90)
 		(unit 1)
@@ -17341,6 +17846,81 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 111.76 113.03 180)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "c8dae63c-9e58-45fe-a008-cb9d28145f99")
+		(property "Reference" "TP4"
+			(at 116.586 117.094 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TestPoint"
+			(at 121.92 114.808 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "penta:ScrewTouchHole"
+			(at 106.68 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 106.68 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "test point"
+			(at 111.76 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" ""
+			(at 111.76 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "f5061fde-0aea-4861-9376-0df1073ed42c")
+		)
+		(instances
+			(project "penta"
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "TP4")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "penta:WS2812B-1010")
 		(at 427.99 121.92 180)
 		(unit 1)
@@ -18652,72 +19232,6 @@
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
 					(reference "D77")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 116.84 102.87 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "dc177674-62a1-4cc4-8382-5e5547cc5c72")
-		(property "Reference" "#PWR06"
-			(at 116.84 109.22 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 116.84 107.0031 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 116.84 102.87 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 116.84 102.87 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 116.84 102.87 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "a6d03b1f-20ba-4621-a45c-a3682cdbde97")
-		)
-		(instances
-			(project "penta"
-				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
-					(reference "#PWR06")
 					(unit 1)
 				)
 			)
