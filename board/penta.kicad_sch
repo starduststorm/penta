@@ -1452,7 +1452,7 @@
 				(pin passive line
 					(at -2.54 -21.59 90)
 					(length 2.54)
-					(name "BAT"
+					(name "VIN"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -3165,10 +3165,6 @@
 		(uuid "7773567f-6983-4d63-8693-7b2be8015e1b")
 	)
 	(no_connect
-		(at 189.23 109.22)
-		(uuid "828be6a0-7f40-40ec-9a78-f821ab789b3c")
-	)
-	(no_connect
 		(at 189.23 64.77)
 		(uuid "9fe81104-6c99-471a-a190-938f26763935")
 	)
@@ -4102,6 +4098,16 @@
 	)
 	(wire
 		(pts
+			(xy 194.31 113.03) (xy 194.31 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "66666d1c-f837-480d-86f0-688bbc6069c9")
+	)
+	(wire
+		(pts
 			(xy 458.47 179.07) (xy 473.71 179.07)
 		)
 		(stroke
@@ -4922,6 +4928,16 @@
 	)
 	(wire
 		(pts
+			(xy 189.23 109.22) (xy 189.23 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c54a7032-8c31-4c41-a814-0051ed6b7bc7")
+	)
+	(wire
+		(pts
 			(xy 351.79 234.95) (xy 367.03 234.95)
 		)
 		(stroke
@@ -5402,6 +5418,16 @@
 	)
 	(wire
 		(pts
+			(xy 189.23 113.03) (xy 184.15 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f7de426a-cf3e-4663-b6fb-683d3c3278de")
+	)
+	(wire
+		(pts
 			(xy 336.55 90.17) (xy 351.79 90.17)
 		)
 		(stroke
@@ -5479,6 +5505,16 @@
 			(type default)
 		)
 		(uuid "fee7cf17-cebe-4e55-b15d-16eac1150cca")
+	)
+	(text "VBUS >| VIN"
+		(exclude_from_sim no)
+		(at 181.61 115.062 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "a427df5a-40a1-46cc-a6da-e308be5e4537")
 	)
 	(label "LED_DATA"
 		(at 328.93 26.67 180)
@@ -10626,7 +10662,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 194.31 109.22 0)
+		(at 194.31 113.03 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -10635,7 +10671,7 @@
 		(fields_autoplaced yes)
 		(uuid "60e92d20-a7b5-472d-a8dd-29b2e6d9238a")
 		(property "Reference" "#PWR03"
-			(at 194.31 115.57 0)
+			(at 194.31 119.38 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10644,7 +10680,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 194.31 113.3531 0)
+			(at 194.31 117.1631 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10652,7 +10688,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 194.31 109.22 0)
+			(at 194.31 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10661,7 +10697,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 194.31 109.22 0)
+			(at 194.31 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10670,7 +10706,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 194.31 109.22 0)
+			(at 194.31 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13366,6 +13402,72 @@
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
 					(reference "D45")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+5V")
+		(at 184.15 113.03 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8ab3bbe7-2159-4e73-919d-e80b2cc088ef")
+		(property "Reference" "#PWR013"
+			(at 184.15 116.84 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+5V"
+			(at 184.15 108.8969 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 184.15 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 184.15 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+5V\""
+			(at 184.15 113.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "1b1ba1c1-3d47-404e-8b8c-ca8a19a340f6")
+		)
+		(instances
+			(project "penta"
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "#PWR013")
 					(unit 1)
 				)
 			)

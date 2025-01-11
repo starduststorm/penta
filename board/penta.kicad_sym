@@ -611,7 +611,7 @@
 			(pin passive line
 				(at -2.54 -21.59 90)
 				(length 2.54)
-				(name "BAT"
+				(name "VIN"
 					(effects
 						(font
 							(size 1.27 1.27)

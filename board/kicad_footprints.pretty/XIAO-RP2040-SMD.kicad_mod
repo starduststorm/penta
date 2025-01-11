@@ -383,44 +383,20 @@
 		(uuid "fd579d63-bbef-4609-9252-aad3f944a314")
 	)
 	(pad "15" smd roundrect
-		(at -1.088 8.64 270)
-		(size 2.5 1.1)
+		(at -1.088 9.64 270)
+		(size 4.5 1.3)
 		(layers "F.Cu" "F.Paste" "F.Mask")
 		(roundrect_rratio 0.25)
 		(thermal_bridge_angle 45)
 		(uuid "144d3c3d-6207-433c-9e61-4f75722af865")
 	)
 	(pad "16" smd roundrect
-		(at 1.452 8.64 270)
-		(size 2.5 1.1)
+		(at 1.452 9.64 270)
+		(size 4.5 1.3)
 		(layers "F.Cu" "F.Paste" "F.Mask")
 		(roundrect_rratio 0.25)
 		(thermal_bridge_angle 45)
 		(uuid "3780a4ef-348c-4241-b04b-2cb4f7127fa2")
-	)
-	(pad "17" smd circle
-		(at -1.088 -8.378)
-		(size 1.7 1.7)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "ad890579-1e55-4b71-9d59-080a59598896")
-	)
-	(pad "18" smd circle
-		(at 1.452 -8.378)
-		(size 1.7 1.7)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "25d6fdae-01ac-4ca4-8702-55badc8bcbc8")
-	)
-	(pad "19" smd circle
-		(at -1.088 -5.838)
-		(size 1.7 1.7)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "e73ae295-736f-4acf-8ee1-0c120ebcebea")
-	)
-	(pad "20" smd circle
-		(at 1.452 -5.838)
-		(size 1.7 1.7)
-		(layers "F.Cu" "F.Paste" "F.Mask")
-		(uuid "7adfba87-f861-42a5-bb73-c3f9fac53180")
 	)
 	(model "${KIPRJMOD}/kicad_footprints.pretty/Seeed Studio XIAO RP2040 v26.step"
 		(offset
