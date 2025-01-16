@@ -2425,6 +2425,102 @@
 				)
 			)
 		)
+		(symbol "power:PWR_FLAG"
+			(power)
+			(pin_numbers hide)
+			(pin_names
+				(offset 0) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#FLG"
+				(at 0 1.905 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "PWR_FLAG"
+				(at 0 3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Special symbol for telling ERC where power comes from"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "flag power"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "PWR_FLAG_0_0"
+				(pin power_out line
+					(at 0 0 90)
+					(length 0)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "PWR_FLAG_0_1"
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+		)
 	)
 	(junction
 		(at 397.51 234.95)
@@ -3525,8 +3621,8 @@
 		(uuid "fffaa2d5-ef94-4d5e-85b7-8dc1b4dfa6c2")
 	)
 	(no_connect
-		(at 170.18 99.06)
-		(uuid "0c00a3df-40d8-430f-a275-34eac9902dcd")
+		(at 170.18 76.2)
+		(uuid "3505baa2-4e0d-4568-94ea-921c287c934a")
 	)
 	(no_connect
 		(at 194.31 64.77)
@@ -3543,6 +3639,10 @@
 	(no_connect
 		(at 189.23 64.77)
 		(uuid "9fe81104-6c99-471a-a190-938f26763935")
+	)
+	(no_connect
+		(at 170.18 83.82)
+		(uuid "d2b130bd-6cc0-404d-87d2-d6c161a419cf")
 	)
 	(no_connect
 		(at 185.42 64.77)
@@ -3690,7 +3790,7 @@
 	)
 	(wire
 		(pts
-			(xy 213.36 80.01) (xy 223.52 80.01)
+			(xy 213.36 80.01) (xy 217.17 80.01)
 		)
 		(stroke
 			(width 0)
@@ -3710,13 +3810,13 @@
 	)
 	(wire
 		(pts
-			(xy 157.48 91.44) (xy 157.48 90.17)
+			(xy 213.36 95.25) (xy 226.06 95.25)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "1b2994ed-7a48-4024-a5d2-2bb318d700df")
+		(uuid "1c4e1e5b-433b-412a-a838-5bf325176276")
 	)
 	(wire
 		(pts
@@ -4100,16 +4200,6 @@
 	)
 	(wire
 		(pts
-			(xy 166.37 76.2) (xy 170.18 76.2)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3a013b0c-5de2-4093-a075-1c41ea6dafe8")
-	)
-	(wire
-		(pts
 			(xy 427.99 90.17) (xy 443.23 90.17)
 		)
 		(stroke
@@ -4430,7 +4520,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 91.44) (xy 157.48 91.44)
+			(xy 170.18 99.06) (xy 160.02 99.06)
 		)
 		(stroke
 			(width 0)
@@ -4710,7 +4800,7 @@
 	)
 	(wire
 		(pts
-			(xy 213.36 99.06) (xy 222.25 99.06)
+			(xy 213.36 99.06) (xy 226.06 99.06)
 		)
 		(stroke
 			(width 0)
@@ -4827,6 +4917,16 @@
 			(type default)
 		)
 		(uuid "89e1bc38-3d53-42a5-a115-4869ea11badb")
+	)
+	(wire
+		(pts
+			(xy 220.98 76.2) (xy 220.98 83.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8a812852-6a5a-46c8-b124-6c9e1c7c286a")
 	)
 	(wire
 		(pts
@@ -5087,16 +5187,6 @@
 			(type default)
 		)
 		(uuid "a45180d7-ee1e-4e00-8a6c-fa11a442f86b")
-	)
-	(wire
-		(pts
-			(xy 166.37 71.12) (xy 166.37 76.2)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a4fc8bbe-61b7-4d71-8e6a-a3dd19c77af3")
 	)
 	(wire
 		(pts
@@ -5417,6 +5507,16 @@
 			(type default)
 		)
 		(uuid "ccc0e3c4-b3cf-4ff7-b246-c0e8b193dc24")
+	)
+	(wire
+		(pts
+			(xy 213.36 83.82) (xy 220.98 83.82)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ccd00c92-c2dc-4611-965b-b0af35035030")
 	)
 	(wire
 		(pts
@@ -5978,35 +6078,47 @@
 		)
 		(uuid "fee7cf17-cebe-4e55-b15d-16eac1150cca")
 	)
-	(text "make it 4-layer so I can switch off the whole plane? \n"
+	(text "LRCLK gpio must be BCLK+1"
 		(exclude_from_sim no)
-		(at 157.988 142.748 0)
+		(at 224.79 87.63 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
+			(justify left)
 		)
-		(uuid "1da44a8f-7fc7-49b3-937f-be9eb1bd6ec9")
+		(uuid "7b045077-9452-4ce2-8c8c-7bf0d6a4763b")
 	)
-	(text "put a mostfet so they can turn leds off an save power. just do it."
+	(text "VBUS ->|- VIN"
 		(exclude_from_sim no)
-		(at 155.956 137.414 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-		)
-		(uuid "848e2f6a-c247-4fa6-983e-46875d7e8228")
-	)
-	(text "VBUS >| VIN"
-		(exclude_from_sim no)
-		(at 181.61 115.062 0)
+		(at 181.61 115.57 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 		)
 		(uuid "a427df5a-40a1-46cc-a6da-e308be5e4537")
+	)
+	(text "pio requirement:\ntouch pins must be contiguous gpios"
+		(exclude_from_sim no)
+		(at 223.52 106.68 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "a8afaed0-d328-4437-9450-506348805e4c")
+	)
+	(text "not actually touch pins obv\njust same footprint for symmetry"
+		(exclude_from_sim no)
+		(at 121.666 120.904 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "c64f2696-6ab0-4728-b867-dba4dc681d52")
 	)
 	(label "LED_DATA"
 		(at 328.93 26.67 180)
@@ -6052,6 +6164,17 @@
 		)
 		(uuid "3af19f6b-48b7-435a-aff7-ce517643f488")
 	)
+	(label "TOUCH2"
+		(at 213.36 95.25 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "3dff940a-7f0a-4384-9ac6-62253adae2a4")
+	)
 	(label "EN_PIXELS"
 		(at 170.18 87.63 180)
 		(fields_autoplaced yes)
@@ -6085,7 +6208,7 @@
 		)
 		(uuid "622b7d3d-e540-48b0-8d8d-488fbbbc8815")
 	)
-	(label "TOUCH3"
+	(label "TOUCH1"
 		(at 213.36 99.06 0)
 		(fields_autoplaced yes)
 		(effects
@@ -6097,7 +6220,7 @@
 		(uuid "64b2bfc3-d69a-4fef-be7a-df9fbfaf1512")
 	)
 	(label "BCLK"
-		(at 213.36 95.25 0)
+		(at 213.36 87.63 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -6118,8 +6241,8 @@
 		)
 		(uuid "6fd9b2b5-cccb-4775-8f95-7186285d1258")
 	)
-	(label "TOUCH1"
-		(at 166.37 76.2 180)
+	(label "TOUCH0"
+		(at 168.91 99.06 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -6162,19 +6285,8 @@
 		)
 		(uuid "98a383da-c038-4635-a2d9-8b71cb1ab571")
 	)
-	(label "TOUCH2"
-		(at 170.18 91.44 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "9e7e22da-15c7-4bbe-bd40-e09ce3e04da2")
-	)
 	(label "LRCLK"
-		(at 213.36 87.63 0)
+		(at 213.36 91.44 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -6229,13 +6341,13 @@
 		(uuid "f09f0333-5269-4522-ad13-47548e906c49")
 	)
 	(label "I2S DATA"
-		(at 213.36 91.44 0)
+		(at 170.18 91.44 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "ff94b7f5-0115-484c-a477-86280db503a4")
 	)
@@ -6334,15 +6446,15 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 157.48 90.17 0)
+		(at 160.02 99.06 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "04bdb7c3-e6d9-4774-922c-dc9f04ca09a7")
-		(property "Reference" "TP2"
-			(at 152.654 86.106 0)
+		(property "Reference" "TP0"
+			(at 155.194 94.996 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6350,8 +6462,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TestPoint"
-			(at 147.32 88.392 0)
+		(property "Value" "TouchPoint"
+			(at 152.654 92.456 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6360,7 +6472,7 @@
 			)
 		)
 		(property "Footprint" "penta:ScrewTouchHole"
-			(at 162.56 90.17 0)
+			(at 165.1 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6369,7 +6481,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 162.56 90.17 0)
+			(at 165.1 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6378,7 +6490,7 @@
 			)
 		)
 		(property "Description" "test point"
-			(at 157.48 90.17 0)
+			(at 160.02 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6387,7 +6499,7 @@
 			)
 		)
 		(property "Designation" ""
-			(at 157.48 90.17 0)
+			(at 160.02 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6401,7 +6513,7 @@
 		(instances
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
-					(reference "TP2")
+					(reference "TP0")
 					(unit 1)
 				)
 			)
@@ -7644,7 +7756,7 @@
 		(fields_autoplaced yes)
 		(uuid "1e0fcf99-5cb3-406b-a3f3-2dfc4038b5d0")
 		(property "Reference" "C21"
-			(at 345.2241 3.8742 0)
+			(at 345.2241 3.8741 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7652,7 +7764,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10uF"
 			(at 345.2241 6.2984 0)
 			(effects
 				(font
@@ -8038,8 +8150,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TestPoint"
-			(at 134.62 114.808 0)
+		(property "Value" "TouchPoint"
+			(at 135.382 114.554 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11274,7 +11386,7 @@
 		(fields_autoplaced yes)
 		(uuid "58bae217-c2de-4431-97e1-3f23bfbf4a99")
 		(property "Reference" "C24"
-			(at 371.8941 3.8742 0)
+			(at 371.8941 3.8741 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11282,7 +11394,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10uF"
 			(at 371.8941 6.2984 0)
 			(effects
 				(font
@@ -11839,7 +11951,7 @@
 		(fields_autoplaced yes)
 		(uuid "679b3881-f26f-4846-b0b8-000f005e4dc4")
 		(property "Reference" "C20"
-			(at 335.0641 3.8742 0)
+			(at 335.0641 3.8741 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11847,7 +11959,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10uF"
 			(at 335.0641 6.2984 0)
 			(effects
 				(font
@@ -11893,6 +12005,72 @@
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
 					(reference "C20")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 163.83 119.38 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "67bfb0f1-17ea-4702-ac5f-3bf65e7128c0")
+		(property "Reference" "#FLG01"
+			(at 163.83 117.475 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 163.83 115.2469 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 163.83 119.38 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 163.83 119.38 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Special symbol for telling ERC where power comes from"
+			(at 163.83 119.38 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "520a92fc-9b44-4e11-9bac-a59be80942f2")
+		)
+		(instances
+			(project ""
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "#FLG01")
 					(unit 1)
 				)
 			)
@@ -12182,7 +12360,7 @@
 		(fields_autoplaced yes)
 		(uuid "7165ca35-4a45-4afb-8d8b-23c52b43ce77")
 		(property "Reference" "C23"
-			(at 363.0041 3.8742 0)
+			(at 363.0041 3.8741 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12190,7 +12368,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10uF"
 			(at 363.0041 6.2984 0)
 			(effects
 				(font
@@ -12810,7 +12988,7 @@
 		(fields_autoplaced yes)
 		(uuid "7a9d05fa-4a8b-4c6e-991d-9e7662c731bc")
 		(property "Reference" "C22"
-			(at 354.1141 3.8742 0)
+			(at 354.1141 3.8741 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12818,7 +12996,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10uF"
 			(at 354.1141 6.2984 0)
 			(effects
 				(font
@@ -13336,15 +13514,15 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 222.25 99.06 0)
+		(at 226.06 99.06 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "7ff561dc-e1d6-4359-9ea1-8bc0369777f1")
-		(property "Reference" "TP5"
-			(at 223.266 96.012 0)
+		(property "Reference" "TP1"
+			(at 230.886 102.362 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13352,8 +13530,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TestPoint"
-			(at 223.266 98.044 0)
+		(property "Value" "TouchPoint"
+			(at 237.236 100.076 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13362,7 +13540,7 @@
 			)
 		)
 		(property "Footprint" "penta:ScrewTouchHole"
-			(at 227.33 99.06 0)
+			(at 220.98 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13371,7 +13549,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 227.33 99.06 0)
+			(at 220.98 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13380,7 +13558,7 @@
 			)
 		)
 		(property "Description" "test point"
-			(at 222.25 99.06 0)
+			(at 226.06 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13389,7 +13567,7 @@
 			)
 		)
 		(property "Designation" ""
-			(at 222.25 99.06 0)
+			(at 226.06 99.06 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13403,7 +13581,7 @@
 		(instances
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
-					(reference "TP5")
+					(reference "TP1")
 					(unit 1)
 				)
 			)
@@ -13884,7 +14062,7 @@
 		(dnp no)
 		(uuid "890a94c0-46d6-4288-b065-60b2d7581876")
 		(property "Reference" "R2"
-			(at 145.034 96.647 90)
+			(at 144.78 97.282 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16298,15 +16476,15 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 166.37 71.12 0)
+		(at 226.06 95.25 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "ad8e3ba5-7c36-4f74-949f-2bcdeda75cb1")
-		(property "Reference" "TP1"
-			(at 161.544 67.056 0)
+		(property "Reference" "TP2"
+			(at 227.33 92.202 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16314,8 +16492,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TestPoint"
-			(at 156.21 69.342 0)
+		(property "Value" "TouchPoint"
+			(at 227.33 94.488 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16324,7 +16502,7 @@
 			)
 		)
 		(property "Footprint" "penta:ScrewTouchHole"
-			(at 171.45 71.12 0)
+			(at 231.14 95.25 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16333,7 +16511,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 171.45 71.12 0)
+			(at 231.14 95.25 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16342,7 +16520,7 @@
 			)
 		)
 		(property "Description" "test point"
-			(at 166.37 71.12 0)
+			(at 226.06 95.25 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16351,7 +16529,7 @@
 			)
 		)
 		(property "Designation" ""
-			(at 166.37 71.12 0)
+			(at 226.06 95.25 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16365,7 +16543,7 @@
 		(instances
 			(project ""
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
-					(reference "TP1")
+					(reference "TP2")
 					(unit 1)
 				)
 			)
@@ -17962,8 +18140,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TestPoint"
-			(at 121.92 114.808 0)
+		(property "Value" "TouchPoint"
+			(at 122.682 114.808 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20174,7 +20352,7 @@
 	)
 	(symbol
 		(lib_id "power:+3V3")
-		(at 213.36 83.82 270)
+		(at 220.98 76.2 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -20182,7 +20360,7 @@
 		(dnp no)
 		(uuid "ea9ace44-31b3-401f-b761-f109d5432a25")
 		(property "Reference" "#PWR010"
-			(at 209.55 83.82 0)
+			(at 220.98 80.01 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20191,7 +20369,7 @@
 			)
 		)
 		(property "Value" "+3V3"
-			(at 217.678 83.058 0)
+			(at 222.504 72.136 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20199,7 +20377,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 213.36 83.82 0)
+			(at 220.98 76.2 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20208,7 +20386,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 213.36 83.82 0)
+			(at 220.98 76.2 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20217,7 +20395,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3V3\""
-			(at 213.36 83.82 0)
+			(at 220.98 76.2 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20841,16 +21019,15 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 223.52 80.01 0)
+		(at 217.17 80.01 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "f23cf791-17d9-4d0e-9635-c1091d48ac7a")
 		(property "Reference" "#PWR02"
-			(at 223.52 86.36 0)
+			(at 217.17 86.36 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20859,7 +21036,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 223.52 84.1431 0)
+			(at 217.17 78.74 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20867,7 +21044,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 223.52 80.01 0)
+			(at 217.17 80.01 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20876,7 +21053,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 223.52 80.01 0)
+			(at 217.17 80.01 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20885,7 +21062,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 223.52 80.01 0)
+			(at 217.17 80.01 0)
 			(effects
 				(font
 					(size 1.27 1.27)
