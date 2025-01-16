@@ -17,18 +17,18 @@ extern char *__brkval;
 #include <SPI.h>
 
 #define LED_DATA 27
-#define LED_LINE_0_POWER 29
+#define LED_LINE_0_POWER 27
 
 #include <I2S.h>
 I2S i2s(INPUT);
 
-#define I2S_BCLK 3
+#define I2S_BCLK 28
 #define I2S_LRCLK (BCLK+1)
 #define I2S_DATA 6
 const int sampleRate = 1000;
 
-#define UNCONNECTED_PIN_1 28
-#define UNCONNECTED_PIN_2 29
+#define UNCONNECTED_PIN_1 7
+#define UNCONNECTED_PIN_2 7
 
 #define FASTLED_USE_PROGMEM 1
 #define FASTLED_USE_GLOBAL_BRIGHTNESS 1
@@ -60,7 +60,7 @@ static bool powerOn = true;
 
 #define TOUCH_PIO pio0
 #define TOUCH_PIN 0 // GPIO number for the first touch button
-#define TOUCH_COUNT 3 // number of sequential touch buttons
+#define TOUCH_COUNT 5 // number of sequential touch buttons
 
 volatile uint touch_state = 0;
 volatile uint touch_state_last =0;
@@ -78,14 +78,14 @@ void touch_isr_handler(void) {
     touch_state_last = touch_state;
 }
 
-int touch_setup(PIO pio_touch, int start_pin, int pin_count, const float clk_div){
-    assert(pin_count < 5, "5 pins max per state machine");
+int touch_setup(PIO pio_touch, int start_pin, int pin_count, const float clk_div) {
+    assert(pin_count <= 5, "5 pins max per state machine");
     if (pin_count > 5) {
         return 1;
     }
     int sm;
     uint offset_touch = pio_add_program(TOUCH_PIO, &touch_program);
-    if (pin_count>0) {
+    if (pin_count > 0) {
         sm = pio_claim_unused_sm(pio_touch,true); // Panic if unavailible
         pio_set_irq0_source_enabled(pio_touch, (enum pio_interrupt_source)sm, true); // state machine number happens to be equal to rx fifo not empty bit for that state machine
         touch_init(pio_touch, sm, offset_touch, start_pin, pin_count, clk_div);
@@ -204,8 +204,8 @@ void loop() {
 
   if(touch_change_flg){
     touch_change_flg = 0;
-    // printf("touch_state print: %20b \n", touch_state);
-    // logf("touch_state: %i \n", touch_state);
+    printf("touch_state print: %20b \n", touch_state);
+    logf("touch_state: %i \n", touch_state);
   }
 
   // FastLED.show();

@@ -2529,12 +2529,6 @@
 		(uuid "00dbded3-6c88-487a-95ec-e85a6314f854")
 	)
 	(junction
-		(at 116.84 113.03)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "014c935b-e3b8-4ca4-9e6a-c880d6500105")
-	)
-	(junction
 		(at 382.27 49.53)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3621,10 +3615,6 @@
 		(uuid "fffaa2d5-ef94-4d5e-85b7-8dc1b4dfa6c2")
 	)
 	(no_connect
-		(at 170.18 76.2)
-		(uuid "3505baa2-4e0d-4568-94ea-921c287c934a")
-	)
-	(no_connect
 		(at 194.31 64.77)
 		(uuid "36681132-1a94-4afd-8824-42bd8fe6f119")
 	)
@@ -3641,8 +3631,8 @@
 		(uuid "9fe81104-6c99-471a-a190-938f26763935")
 	)
 	(no_connect
-		(at 170.18 83.82)
-		(uuid "d2b130bd-6cc0-404d-87d2-d6c161a419cf")
+		(at 116.84 102.87)
+		(uuid "a942fb09-7cc7-4deb-bcdd-dac2863b39a0")
 	)
 	(no_connect
 		(at 185.42 64.77)
@@ -3657,6 +3647,16 @@
 			(type default)
 		)
 		(uuid "00fa91af-6ac7-4e94-9d41-b5e0d90bccef")
+	)
+	(wire
+		(pts
+			(xy 233.68 90.17) (xy 233.68 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0238b469-59ab-4e28-a72a-0c85f1bbd2d0")
 	)
 	(wire
 		(pts
@@ -3800,6 +3800,16 @@
 	)
 	(wire
 		(pts
+			(xy 233.68 88.9) (xy 233.68 87.63)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1997d37f-b9b9-4faa-ad58-2f7dc3cd101a")
+	)
+	(wire
+		(pts
 			(xy 205.74 134.62) (xy 205.74 138.43)
 		)
 		(stroke
@@ -3810,7 +3820,7 @@
 	)
 	(wire
 		(pts
-			(xy 213.36 95.25) (xy 226.06 95.25)
+			(xy 224.79 96.52) (xy 226.06 96.52)
 		)
 		(stroke
 			(width 0)
@@ -4360,6 +4370,16 @@
 	)
 	(wire
 		(pts
+			(xy 224.79 96.52) (xy 224.79 95.25)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "535729ce-2825-404b-9746-6c3ebf7f05d0")
+	)
+	(wire
+		(pts
 			(xy 382.27 49.53) (xy 367.03 49.53)
 		)
 		(stroke
@@ -4780,6 +4800,16 @@
 	)
 	(wire
 		(pts
+			(xy 224.79 95.25) (xy 213.36 95.25)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "763dd37c-7755-4062-a4dd-1e3cb75e8e50")
+	)
+	(wire
+		(pts
 			(xy 458.47 250.19) (xy 473.71 250.19)
 		)
 		(stroke
@@ -4787,6 +4817,16 @@
 			(type default)
 		)
 		(uuid "76f83313-2fef-4f5a-b93c-0fefb0558bbd")
+	)
+	(wire
+		(pts
+			(xy 233.68 90.17) (xy 234.95 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7b6d5fd4-1210-4362-ba39-2ccaf014822f")
 	)
 	(wire
 		(pts
@@ -4800,7 +4840,7 @@
 	)
 	(wire
 		(pts
-			(xy 213.36 99.06) (xy 226.06 99.06)
+			(xy 224.79 97.79) (xy 226.06 97.79)
 		)
 		(stroke
 			(width 0)
@@ -4867,16 +4907,6 @@
 			(type default)
 		)
 		(uuid "83b6122a-1ed3-4d62-adfc-8899e0372e70")
-	)
-	(wire
-		(pts
-			(xy 116.84 102.87) (xy 116.84 113.03)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "83cb4d75-1ab4-4677-878b-b5078f2aaf13")
 	)
 	(wire
 		(pts
@@ -4957,6 +4987,16 @@
 			(type default)
 		)
 		(uuid "8da03481-23f6-4ba0-9012-b904e6102dd9")
+	)
+	(wire
+		(pts
+			(xy 233.68 88.9) (xy 234.95 88.9)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8ef9926b-8175-4269-88f7-603589b05570")
 	)
 	(wire
 		(pts
@@ -5290,6 +5330,16 @@
 	)
 	(wire
 		(pts
+			(xy 224.79 99.06) (xy 213.36 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ae2023b6-90d7-4869-9f80-ae9a43484e67")
+	)
+	(wire
+		(pts
 			(xy 367.03 234.95) (xy 382.27 234.95)
 		)
 		(stroke
@@ -5347,6 +5397,16 @@
 			(type default)
 		)
 		(uuid "b3cbc669-574d-483b-a8be-3de70622e80b")
+	)
+	(wire
+		(pts
+			(xy 224.79 97.79) (xy 224.79 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b5c9eae8-8760-4b9c-b1f5-debf146e638c")
 	)
 	(wire
 		(pts
@@ -5520,16 +5580,6 @@
 	)
 	(wire
 		(pts
-			(xy 116.84 113.03) (xy 111.76 113.03)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "cd6d3764-9e8f-4a1a-93b7-bc622d1fce3d")
-	)
-	(wire
-		(pts
 			(xy 412.75 59.69) (xy 427.99 59.69)
 		)
 		(stroke
@@ -5617,16 +5667,6 @@
 			(type default)
 		)
 		(uuid "d4afaafd-1570-4ec7-ae8e-f2cebb6959e8")
-	)
-	(wire
-		(pts
-			(xy 124.46 113.03) (xy 116.84 113.03)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d5840e66-4ce0-4486-9e03-60a6b0221b39")
 	)
 	(wire
 		(pts
@@ -5870,6 +5910,26 @@
 	)
 	(wire
 		(pts
+			(xy 233.68 91.44) (xy 213.36 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e991acdb-785a-46de-85a9-d2b36d84f4a6")
+	)
+	(wire
+		(pts
+			(xy 233.68 87.63) (xy 213.36 87.63)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e9ae443b-9e2d-473c-b28d-983ff4bf6d41")
+	)
+	(wire
+		(pts
 			(xy 336.55 59.69) (xy 351.79 59.69)
 		)
 		(stroke
@@ -6080,7 +6140,7 @@
 	)
 	(text "LRCLK gpio must be BCLK+1"
 		(exclude_from_sim no)
-		(at 224.79 87.63 0)
+		(at 143.51 71.12 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -6109,16 +6169,6 @@
 			(justify left)
 		)
 		(uuid "a8afaed0-d328-4437-9450-506348805e4c")
-	)
-	(text "not actually touch pins obv\njust same footprint for symmetry"
-		(exclude_from_sim no)
-		(at 121.666 120.904 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-		)
-		(uuid "c64f2696-6ab0-4728-b867-dba4dc681d52")
 	)
 	(label "LED_DATA"
 		(at 328.93 26.67 180)
@@ -6153,6 +6203,17 @@
 		)
 		(uuid "36b48ad8-2a16-4819-a262-17a97ac391ab")
 	)
+	(label "TOUCH4"
+		(at 213.36 91.44 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "38fba386-68e1-41ab-943a-174d436e1881")
+	)
 	(label "PXL_GND"
 		(at 331.47 34.29 180)
 		(fields_autoplaced yes)
@@ -6176,7 +6237,7 @@
 		(uuid "3dff940a-7f0a-4384-9ac6-62253adae2a4")
 	)
 	(label "EN_PIXELS"
-		(at 170.18 87.63 180)
+		(at 170.18 80.01 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -6220,13 +6281,13 @@
 		(uuid "64b2bfc3-d69a-4fef-be7a-df9fbfaf1512")
 	)
 	(label "BCLK"
-		(at 213.36 87.63 0)
+		(at 170.18 83.82 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "6f83e723-0034-4697-8bfb-5c5fbe922698")
 	)
@@ -6274,6 +6335,17 @@
 		)
 		(uuid "84351940-714a-4e24-b8d6-04a81e37c43c")
 	)
+	(label "TOUCH3"
+		(at 213.36 87.63 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8adcd083-e645-430a-aa56-84a6af7fddab")
+	)
 	(label "PXL_GND"
 		(at 331.47 194.31 180)
 		(fields_autoplaced yes)
@@ -6286,13 +6358,13 @@
 		(uuid "98a383da-c038-4635-a2d9-8b71cb1ab571")
 	)
 	(label "LRCLK"
-		(at 213.36 91.44 0)
+		(at 170.18 87.63 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "9ea320d8-d2b5-4f85-ad71-be13909bf82b")
 	)
@@ -6319,7 +6391,7 @@
 		(uuid "c32c6962-3d77-4ec6-9513-8d835092ae1c")
 	)
 	(label "LED_DATA"
-		(at 170.18 80.01 180)
+		(at 170.18 76.2 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -8134,7 +8206,7 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 124.46 113.03 180)
+		(at 234.95 88.9 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -8142,7 +8214,7 @@
 		(dnp no)
 		(uuid "264b4eaa-2a15-475d-ab8a-3608c6d04334")
 		(property "Reference" "TP3"
-			(at 129.286 117.094 0)
+			(at 235.966 85.598 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8151,7 +8223,7 @@
 			)
 		)
 		(property "Value" "TouchPoint"
-			(at 135.382 114.554 0)
+			(at 235.966 87.884 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8160,7 +8232,7 @@
 			)
 		)
 		(property "Footprint" "penta:ScrewTouchHole"
-			(at 119.38 113.03 0)
+			(at 240.03 88.9 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8169,7 +8241,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 119.38 113.03 0)
+			(at 240.03 88.9 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8178,7 +8250,7 @@
 			)
 		)
 		(property "Description" "test point"
-			(at 124.46 113.03 0)
+			(at 234.95 88.9 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8187,7 +8259,7 @@
 			)
 		)
 		(property "Designation" ""
-			(at 124.46 113.03 0)
+			(at 234.95 88.9 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8326,7 +8398,7 @@
 				)
 			)
 		)
-		(property "Footprint" "easyeda2kicad:LGA-6_L4.7-W3.8-P1.65_LMD4737T"
+		(property "Footprint" "penta:LGA-6_L4.7-W3.8-P1.65_LMD4737T"
 			(at 217.17 142.24 0)
 			(effects
 				(font
@@ -13514,7 +13586,7 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 226.06 99.06 180)
+		(at 226.06 97.79 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -13522,7 +13594,7 @@
 		(dnp no)
 		(uuid "7ff561dc-e1d6-4359-9ea1-8bc0369777f1")
 		(property "Reference" "TP1"
-			(at 230.886 102.362 0)
+			(at 230.886 100.838 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13531,7 +13603,7 @@
 			)
 		)
 		(property "Value" "TouchPoint"
-			(at 237.236 100.076 0)
+			(at 237.744 98.806 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13540,7 +13612,7 @@
 			)
 		)
 		(property "Footprint" "penta:ScrewTouchHole"
-			(at 220.98 99.06 0)
+			(at 220.98 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13549,7 +13621,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 220.98 99.06 0)
+			(at 220.98 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13558,7 +13630,7 @@
 			)
 		)
 		(property "Description" "test point"
-			(at 226.06 99.06 0)
+			(at 226.06 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13567,7 +13639,7 @@
 			)
 		)
 		(property "Designation" ""
-			(at 226.06 99.06 0)
+			(at 226.06 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16476,7 +16548,7 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 226.06 95.25 0)
+		(at 226.06 96.52 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -16484,7 +16556,7 @@
 		(dnp no)
 		(uuid "ad8e3ba5-7c36-4f74-949f-2bcdeda75cb1")
 		(property "Reference" "TP2"
-			(at 227.33 92.202 0)
+			(at 227.33 93.726 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16493,7 +16565,7 @@
 			)
 		)
 		(property "Value" "TouchPoint"
-			(at 227.33 94.488 0)
+			(at 227.33 95.758 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16502,7 +16574,7 @@
 			)
 		)
 		(property "Footprint" "penta:ScrewTouchHole"
-			(at 231.14 95.25 0)
+			(at 231.14 96.52 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16511,7 +16583,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 231.14 95.25 0)
+			(at 231.14 96.52 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16520,7 +16592,7 @@
 			)
 		)
 		(property "Description" "test point"
-			(at 226.06 95.25 0)
+			(at 226.06 96.52 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16529,7 +16601,7 @@
 			)
 		)
 		(property "Designation" ""
-			(at 226.06 95.25 0)
+			(at 226.06 96.52 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18124,7 +18196,7 @@
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
-		(at 111.76 113.03 180)
+		(at 234.95 90.17 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -18132,7 +18204,7 @@
 		(dnp no)
 		(uuid "c8dae63c-9e58-45fe-a008-cb9d28145f99")
 		(property "Reference" "TP4"
-			(at 116.586 117.094 0)
+			(at 239.776 93.218 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18141,7 +18213,7 @@
 			)
 		)
 		(property "Value" "TouchPoint"
-			(at 122.682 114.808 0)
+			(at 246.634 90.932 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18150,7 +18222,7 @@
 			)
 		)
 		(property "Footprint" "penta:ScrewTouchHole"
-			(at 106.68 113.03 0)
+			(at 229.87 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18159,7 +18231,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 106.68 113.03 0)
+			(at 229.87 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18168,7 +18240,7 @@
 			)
 		)
 		(property "Description" "test point"
-			(at 111.76 113.03 0)
+			(at 234.95 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18177,7 +18249,7 @@
 			)
 		)
 		(property "Designation" ""
-			(at 111.76 113.03 0)
+			(at 234.95 90.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
