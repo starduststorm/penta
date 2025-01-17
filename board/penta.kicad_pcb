@@ -12898,7 +12898,7 @@
 		(path "/7ff561dc-e1d6-4359-9ea1-8bc0369777f1")
 		(sheetname "Root")
 		(sheetfile "penta.kicad_sch")
-		(attr exclude_from_pos_files)
+		(attr exclude_from_pos_files exclude_from_bom)
 		(fp_circle
 			(center 0 0)
 			(end 1.8 0)
@@ -28447,7 +28447,7 @@
 		(path "/264b4eaa-2a15-475d-ab8a-3608c6d04334")
 		(sheetname "Root")
 		(sheetfile "penta.kicad_sch")
-		(attr exclude_from_pos_files)
+		(attr exclude_from_pos_files exclude_from_bom)
 		(fp_circle
 			(center 0 0)
 			(end 1.8 0)
@@ -34251,7 +34251,7 @@
 		(path "/ad8e3ba5-7c36-4f74-949f-2bcdeda75cb1")
 		(sheetname "Root")
 		(sheetfile "penta.kicad_sch")
-		(attr exclude_from_pos_files)
+		(attr exclude_from_pos_files exclude_from_bom)
 		(fp_circle
 			(center 0 0)
 			(end 1.8 0)
@@ -49604,7 +49604,7 @@
 		(path "/c8dae63c-9e58-45fe-a008-cb9d28145f99")
 		(sheetname "Root")
 		(sheetfile "penta.kicad_sch")
-		(attr exclude_from_pos_files)
+		(attr exclude_from_pos_files exclude_from_bom)
 		(fp_circle
 			(center 0 0)
 			(end 1.8 0)
@@ -53618,7 +53618,7 @@
 		(path "/04bdb7c3-e6d9-4774-922c-dc9f04ca09a7")
 		(sheetname "Root")
 		(sheetfile "penta.kicad_sch")
-		(attr exclude_from_pos_files)
+		(attr exclude_from_pos_files exclude_from_bom)
 		(fp_circle
 			(center 0 0)
 			(end 1.8 0)
