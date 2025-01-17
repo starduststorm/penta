@@ -800,6 +800,17 @@
 		)
 		(uuid "e914bc47-d90c-4638-b23f-0aa2e84380d6")
 	)
+	(label "S1"
+		(at 80.01 115.57 270)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "1c539adb-ac5f-4b3a-87c0-bbf4814d1ffa")
+	)
 	(symbol
 		(lib_id "Connector:USB_C_Receptacle_PowerOnly_6P")
 		(at 87.63 96.52 0)
