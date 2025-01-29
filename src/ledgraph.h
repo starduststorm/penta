@@ -11,7 +11,7 @@
 
 using namespace std;
 
-typedef uint16_t PixelIndex;
+typedef uint8_t PixelIndex;
 
 const uint8_t EdgeTypesCount = 8;
 typedef uint8_t EdgeTypes;
@@ -37,8 +37,12 @@ typedef union {
 struct Edge {
     typedef enum : uint8_t {
         none             = 0,
-        inbound          = 1 << 1,
-        outbound         = 1 << 0,
+        inbound          = 1 << 0,
+        outbound         = 1 << 1,
+        clockwise        = 1 << 2,
+        counterclockwise = 1 << 3,
+        starwise         = 1 << 4,
+        counterstarwise  = 1 << 5,
         all              = 0xFF,
     } EdgeType;
     
@@ -119,10 +123,29 @@ public:
         }
     }
 
-    void addEdge(Edge edge, bool bidirectional=true) {
-        adjList[edge.from].push_back(edge);
+    void addEdge(Edge newEdge, bool bidirectional=true) {
+        bool forwardFound = false, reverseFound = false;
+        for (Edge &edge : adjList[newEdge.from]) {
+            if (edge.to == newEdge.to) {
+                edge.types |= newEdge.types;
+                forwardFound = true;
+                break;
+            }
+        }
         if (bidirectional) {
-            adjList[edge.to].push_back(edge.transpose());
+            for (Edge &edge : adjList[newEdge.to]) {
+                if (edge.from == newEdge.from) {
+                    edge.types |= newEdge.transpose().types;
+                    reverseFound = true;
+                    break;
+                }
+        }
+        }
+        if (!forwardFound) {
+            adjList[newEdge.from].push_back(newEdge);
+        }
+        if (bidirectional && !reverseFound) {
+            adjList[newEdge.to].push_back(newEdge.transpose());
         }
     }
 
@@ -155,11 +178,46 @@ public:
     }
 };
 
+#define CIRCLE_LEDS 70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,124
+vector<PixelIndex> kCircleLedsInOrder = {CIRCLE_LEDS};
+set<PixelIndex> kCircleLeds = {CIRCLE_LEDS};
+set<PixelIndex> pentaTriangles[] = {
+                                    { 0, 1, 2, 3, 4,19,20,21,22,23,65,66,67,68,69, 70},
+                                    { 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19, 81},
+                                    {15,31,32,33,34,35,36,37,38,39,40,41,42,43,44, 92},
+                                    {27,28,29,30,31,45,46,47,48,49,50,51,52,53,54,103},
+                                    {23,24,25,26,27,55,56,57,58,59,60,61,62,63,64,114},
+                                    };
+set<PixelIndex> pentaCenter = {15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34};
+#define TRIANGLE_POINTS 70,81,92,103,114
+#define PENTA_POINTS 19,15,31,27,23
+vector<PixelIndex> kStarwiseLeds = {70,0,1,2,3,4,19,18,17,16,15,35,36,37,38,39,
+                                    92,40,41,42,43,44,31,30,29,28,27,55,56,57,58,59,
+                                    114,60,61,62,63,64,23,22,21,20,19,5,6,7,8,9,
+                                    81,10,11,12,13,14,15,34,33,32,31,45,46,47,48,49,
+                                    103,50,51,52,53,54,27,26,25,24,23,65,66,67,68,69,};
+set<PixelIndex> kStarLeds(kStarwiseLeds.begin(), kStarwiseLeds.end());
+
 Graph ledgraph;
 
 void initLEDGraph() {
     ledgraph = Graph({}, LED_COUNT);
-    // TODO
+    // circle
+    for (PixelIndex i = 0; i < kCircleLedsInOrder.size(); ++i) {
+        ledgraph.addEdge(Edge(kCircleLedsInOrder[i], kCircleLedsInOrder[(i+1)%kCircleLedsInOrder.size()], Edge::clockwise), true);
+    }
+    // starwise
+    for (PixelIndex i = 0; i < kStarwiseLeds.size(); ++i) {
+        EdgeTypes edgetypes = Edge::starwise;
+        if (i % 16 <= 5) {
+            edgetypes |= Edge::inbound;
+        } else if (i % 16 <= 9) {
+            edgetypes |= Edge::clockwise;
+        } else {
+            edgetypes |= Edge::counterclockwise;
+        }
+        ledgraph.addEdge(Edge(kStarwiseLeds[i], kStarwiseLeds[(i+1)%kStarwiseLeds.size()], edgetypes), true);
+    }
 }
 
 void graphTest(DrawingContext &ctx) {

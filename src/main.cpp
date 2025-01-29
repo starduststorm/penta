@@ -1,4 +1,8 @@
+ // penta main.cpp
 #define DEBUG 1
+#define WAIT_FOR_SERIAL 1
+
+#define FIVE (5)
 
 // for memory logging
 #ifdef __arm__
@@ -16,7 +20,7 @@ extern char *__brkval;
 #include <Arduino.h>
 #include <SPI.h>
 
-#define LED_DATA 27
+#define LED_DATA 26
 #define LED_LINE_0_POWER 27
 
 #include <I2S.h>
@@ -36,7 +40,7 @@ const int sampleRate = 1000;
 #include <functional>
 #include <FastLED.h>
 
-#define LED_COUNT (125)
+#define LED_COUNT (FIVE*FIVE*FIVE)
 
 #include <patterning.h>
 #include <util.h>
@@ -45,8 +49,6 @@ const int sampleRate = 1000;
 
 #include "patterns.h"
 #include "ledgraph.h"
-
-#define WAIT_FOR_SERIAL 1
 
 DrawingContext ctx;
 HardwareControls controls;
@@ -60,7 +62,7 @@ static bool powerOn = true;
 
 #define TOUCH_PIO pio0
 #define TOUCH_PIN 0 // GPIO number for the first touch button
-#define TOUCH_COUNT 5 // number of sequential touch buttons
+#define TOUCH_COUNT FIVE // number of sequential touch buttons
 
 volatile uint touch_state = 0;
 volatile uint touch_state_last =0;
@@ -79,8 +81,8 @@ void touch_isr_handler(void) {
 }
 
 int touch_setup(PIO pio_touch, int start_pin, int pin_count, const float clk_div) {
-    assert(pin_count <= 5, "5 pins max per state machine");
-    if (pin_count > 5) {
+    assert(pin_count <= FIVE, "FIVE pins max per state machine");
+    if (pin_count > FIVE) {
         return 1;
     }
     int sm;
@@ -96,6 +98,8 @@ int touch_setup(PIO pio_touch, int start_pin, int pin_count, const float clk_div
     irq_set_enabled(PIO0_IRQ_0, true);
     return 0;
 }
+
+//
 
 void init_i2s() {
   i2s.setBCLK(I2S_BCLK);
@@ -115,6 +119,7 @@ void init_serial() {
       break;
     }
   }
+  delay(100);
   logf("begin - waited %ims for Serial", millis() - setupStart);
 #elif DEBUG
   delay(2000);
@@ -133,11 +138,46 @@ void serialTimeoutIndicator() {
   delay(20);
 }
 
+void startupWelcome() {
+  int welcomeDuration = 555;
+
+  ctx.leds.fill_solid(CRGB::Black);
+  gpio_put(LED_LINE_0_POWER, true);
+  FastLED.setBrightness(10);
+
+  CRGB color = CRGB::Purple; // FIXME: get from saved
+  uint8_t offset = 16 * random(FIVE); // FIXME: get from saved
+
+  DrawModal(120, welcomeDuration, [welcomeDuration, color, offset](unsigned long elapsed) {
+    ctx.leds.fadeToBlackBy(5);
+    uint16_t progress = ease16InOutQuad(0xFFFF * elapsed/welcomeDuration);
+    PixelIndex px = kStarwiseLeds[(kStarwiseLeds.size() * progress / 0xFFFF + offset) % kStarwiseLeds.size()];
+    ctx.leds[px] = color;
+  });
+  while (ctx.leds) {
+    ctx.leds.fadeToBlackBy(5);
+    FastLED.show();
+  }
+  ctx.leds.fill_solid(CRGB::Black);
+  FastLED.show();
+}
+
 // SETUP ///////////////////////////////////////////////
 
 SPSTButton *button = NULL;
 
+uint8_t sawtoothEvery(unsigned long repeatOn, unsigned riseTime, int phase=0) {
+    unsigned long sawtooth = (millis() + phase) % repeatOn;
+    if (sawtooth > repeatOn-riseTime) {
+      return 0xFF * (sawtooth-repeatOn+riseTime) / riseTime;
+    } else if (sawtooth < riseTime) {
+      return 0xFF - 0xFF * sawtooth / riseTime;
+    }
+    return 0;
+}
+
 void setup() {
+  
   init_serial();
 
   randomSeed(lsb_noise(UNCONNECTED_PIN_1, 8 * sizeof(uint32_t)));
@@ -145,28 +185,32 @@ void setup() {
 
   init_i2s();
 
-  // FastLED.addLeds<SK9822, LED_SPI0_TX, LED_SPI0_SCK, BGR, DATA_RATE_MHZ(16)>(ctx.leds, STRAND_LED_COUNT).setCorrection(0xFFB0C0);
-  // FastLED.addLeds<SK9822, LED_SPI1_TX, LED_SPI1_SCK, BGR, DATA_RATE_MHZ(16)>(ctx.leds+STRAND_LED_COUNT, STRAND_LED_COUNT).setCorrection(0xFFB0C0);
+  // HACK: Touch Setup needs to go before FastLED possibly because the touch pio code doesn't work when it's running off of state machine 0?
+  static const float pio_clk_div = 40; // This should be tuned for the size of the buttons
+  touch_setup(TOUCH_PIO, TOUCH_PIN, TOUCH_COUNT, pio_clk_div);
 
-  fc.loop();
+  FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
+  
+  patternManager.registerPattern<StarwisePattern>();
+  patternManager.registerPattern<StarMazePattern>();
+  patternManager.setupRandomRunner(5*1000);
 
-  patternManager.setTestPattern<TestPattern>();
-
-  // patternManager.setupRandomPattern(30*1000, 500);
+  patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+    Pattern *pattern = new CircleBlink(CRGB::Purple);
+    return pattern;
+  }, [] (PatternRunner &runner) { 
+    return ease8InOutCubic(sawtoothEvery(5*1000, 200, 0));
+  }, 0, 0xFF);
 
   initLEDGraph();
   assert(ledgraph.adjList.size() == LED_COUNT, "adjlist size should match LED_COUNT");
 
-  setupDoneTime = millis();
-
   gpio_init(LED_LINE_0_POWER);
   gpio_set_dir(LED_LINE_0_POWER, true);
-  
-  FastLED.setBrightness(2);
 
-  static const float pio_clk_div = 40; //This should be tuned for the size of the buttons
-  touch_setup(TOUCH_PIO, TOUCH_PIN, TOUCH_COUNT, pio_clk_div);
+  fc.loop();
 
+  setupDoneTime = millis();
   logf("setup done");
 }
 
@@ -178,29 +222,21 @@ void loop() {
     return;
   }
 
-  int32_t l, r;
-  i2s.read32(&l, &r);
-  Serial.printf("%d %d\r\n", l, r);
+  // int32_t l, r;
+  // i2s.read32(&l, &r);
+  // Serial.printf("%d %d\r\n", l, r);
 
-  // static bool firstLoop = true;
-  // if (firstLoop) {
-  //   startupWelcome();
-  //   firstLoop = false;
-  // }
-  // patternManager.loop();
-  // controls.update();
+  static bool firstLoop = true;
+  if (firstLoop) {
+    // startupWelcome();
+    firstLoop = false;
+  }
 
+  FastLED.setBrightness(20);
+  patternManager.loop();
+  controls.update();
 
   //
-
-  // static bool line0power = false;
-  // bool line0poweron = ctx.leds(0, STRAND_LED_COUNT-1);
-  // if (line0power != line0poweron) {
-  //   logf("turn %s line 0", line0poweron?"on":"off");
-  //   line0power = line0poweron;
-  //   gpio_put(LED_LINE_0_POWER, line0poweron);
-  //   // FIXME: we need to stop FASTLED show too, most likely
-  // }
 
   if(touch_change_flg){
     touch_change_flg = 0;
@@ -208,9 +244,22 @@ void loop() {
     logf("touch_state: %i \n", touch_state);
   }
 
-  // FastLED.show();
+  static bool line0power = false;
+  bool line0poweron = (bool)ctx.leds;
+  if (line0power != line0poweron) {
+    line0power = line0poweron;
+    gpio_put(LED_LINE_0_POWER, line0poweron);
+  }
+  
+  if (line0poweron) {
+    FastLED.show();
+  } else {
+    gpio_put(LED_DATA, false);
+  }
 
-  // fc.loop();
   // FIXME: turns out FastLED supports setMaxRefreshRate and countFPS
-  // fc.clampToFramerate(240);
+  // test this
+  // FastLED.setMaxRefreshRate(240);
+  fc.loop();
+  fc.clampToFramerate(240);
 }
