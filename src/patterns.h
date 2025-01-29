@@ -11,6 +11,13 @@
 #include "paletting.h"
 #include "ledgraph.h"
 
+struct PentaState {
+  uint8_t index=0;
+  CRGB color=CRGB::White;
+};
+PentaState pentaState;
+
+
 // a lil patternlet that can be instantiated to run bits
 class BitsFiller {
 public:
@@ -342,49 +349,32 @@ class BlinkPixelSet : public Pattern {
   set<PixelIndex> &pixelSet;
   CRGB color;
 public:
-  BlinkPixelSet(set<PixelIndex> &pixelSet, CRGB color) : pixelSet(pixelSet), color(color) { }
+  unsigned long fadeDuration;
+  unsigned long totalDuration;
+  BlinkPixelSet(set<PixelIndex> &pixelSet, CRGB color, unsigned long fadeDuration=0, unsigned long totalDuration=0) 
+    : pixelSet(pixelSet), color(color), fadeDuration(fadeDuration), totalDuration(totalDuration) {
+      assert(fadeDuration == 0 || totalDuration >= 2 * fadeDuration, "need time to fade in and out");
+    }
   void update() {
-    // const long fadeInTime = 100;
-    // const long fadeOutTime = 100;
-    // uint8_t fade = ease8InOutQuad(runTime() < fadeInTime ? 0xFF * runTime() / fadeInTime : 0xFF - 0xFF * (runTime() - fadeInTime) / fadeOutTime);
-    // if (runTime() > fadeInTime + fadeOutTime) {
-    //   stop();
-    // }
-    for (PixelIndex idx : pixelSet) {
-      // ctx.leds[idx] = color.scale8(fade);
-      ctx.leds[idx] = color;
+    if (totalDuration > 0 && runTime() > totalDuration) {
+      stop();
+    } else {
+      CRGB drawColor = color;
+      if (fadeDuration > 0) {
+        uint8_t fade = min(0xFF, 0xFF * runTime() / fadeDuration);
+        if (totalDuration > 0) {
+          // also fade out
+          fade = scale8(fade, min(0xFF, 0xFF * (totalDuration - runTime()) / fadeDuration));
+        }
+        drawColor = drawColor.scale8(ease8InOutCubic(fade));
+      }
+      for (PixelIndex idx : pixelSet) {
+       ctx.leds[idx] = drawColor;
+      }
     }
   }
   const char *description() {
     return "BlinkPixelSet";
-  }
-};
-
-class CircleBlink : public BlinkPixelSet {
-public:
-  CircleBlink(CRGB color) : BlinkPixelSet(kCircleLeds, color) { }
-  const char *description() {
-    return "CircleBlink";
-  }
-};
-
-class TrianglePoint : public BlinkPixelSet {
-public:
-  // TrianglePoint(uint8_t index, CRGB color) : BlinkPixelSet(pentaTriangles[index], color) { }
-  // uint8_t index; // 0-4
-  // CRGB color;
-
-  // void update() {
-  //   assert(index < 5, "triangle index");
-  //   index = constrain(index, 0, 4);
-  //   set<PixelIndex> set = pentaTriangles[index];
-  //   for (PixelIndex idx : set) {
-  //     ctx.leds[idx] = color;
-  //   }
-  // }
-
-  const char *description() {
-    return "TrianglePoint";
   }
 };
 
@@ -420,7 +410,7 @@ public:
   void update() {
     ctx.leds.fadeToBlackBy(5);
     uint8_t curIndex = runTime()/10 % kStarwiseLeds.size();
-    ctx.leds[kStarwiseLeds[curIndex]] = CRGB::Purple;
+    ctx.leds[kStarwiseLeds[curIndex]] = pentaState.color;
     // bitsFiller.bits[0].color = CRGB(millis()/10, 0xFF, 0xFF);
     // bitsFiller.update();
   }

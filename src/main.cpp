@@ -176,6 +176,20 @@ uint8_t sawtoothEvery(unsigned long repeatOn, unsigned riseTime, int phase=0) {
     return 0;
 }
 
+class TouchButton : public SPSTButton {
+  void initPin(int pin) { } // no-op, skip SPSTButton init and do pin init in constructor
+public:
+  uint8_t touchPinIndex;
+  TouchButton(uint8_t index) : touchPinIndex(index), SPSTButton(-1) { }
+
+  bool isButtonPressed() {
+    if (touch_change_flg) {
+      return touch_state & (1 << touchPinIndex);
+    }
+    return false;
+  }
+};
+
 void setup() {
   
   init_serial();
@@ -189,6 +203,26 @@ void setup() {
   static const float pio_clk_div = 40; // This should be tuned for the size of the buttons
   touch_setup(TOUCH_PIO, TOUCH_PIN, TOUCH_COUNT, pio_clk_div);
 
+  TouchButton *tbs[FIVE];
+  for (int i = 0; i < FIVE; ++i) {
+    tbs[i] = new TouchButton(i);
+    // tbs[i]->onSinglePress([i] {
+    //   logf("Press touch button %i!", i);
+    // });
+    controls.addControl(tbs[i]);
+  }
+  tbs[0]->onSinglePress([] {
+    pentaState.index = (pentaState.index + 1) % FIVE;
+    pentaState.color = CHSV(0xFF * pentaState.index / FIVE, 0xFF, 0xFF);
+
+    patternManager.runOneShotPattern([] (PatternRunner &runner) {
+      BlinkPixelSet *pattern = new BlinkPixelSet(pentaTriangles[pentaState.index], pentaState.color);
+      pattern->fadeDuration = 200;
+      pattern->totalDuration = 500;
+      return pattern;
+    }, 1, 0xFF);
+  });
+  
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
   
   patternManager.registerPattern<StarwisePattern>();
@@ -196,10 +230,9 @@ void setup() {
   patternManager.setupRandomRunner(5*1000);
 
   patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-    Pattern *pattern = new CircleBlink(CRGB::Purple);
-    return pattern;
+    return new BlinkPixelSet(kCircleLeds, pentaState.color);
   }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(5*1000, 200, 0));
+    return ease8InOutCubic(sawtoothEvery(5*1000, 200, 210*pentaState.index));
   }, 0, 0xFF);
 
   initLEDGraph();
@@ -235,14 +268,6 @@ void loop() {
   FastLED.setBrightness(20);
   patternManager.loop();
   controls.update();
-
-  //
-
-  if(touch_change_flg){
-    touch_change_flg = 0;
-    printf("touch_state print: %20b \n", touch_state);
-    logf("touch_state: %i \n", touch_state);
-  }
 
   static bool line0power = false;
   bool line0poweron = (bool)ctx.leds;
