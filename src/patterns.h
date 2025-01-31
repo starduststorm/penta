@@ -14,8 +14,9 @@
 #include "ledgraph.h"
 
 struct PentaState {
-  uint8_t index=0;
-  CRGB color=CRGB::Red;
+  uint8_t arrowIndex=0;
+  uint8_t colorIndex=0;
+  CRGB color=CRGB::Red; // FIXME: just save colorIndex?
 };
 PentaState pentaState;
 
@@ -228,7 +229,7 @@ public:
 
   vector<Bit> bits;
   uint8_t maxSpawnBits;
-  uint8_t maxBitsPerSecond = 0; // limit how fast new bits are spawned, 0 = no limit
+  uint8_t maxBitsPerSecond; // limit how fast new bits are spawned, 0 = no limit (defaults to 1000 * maxSpawnBits / lifespan)
   uint8_t startingSpeed; // for new particles ; pixels/second
   vector<EdgeTypesQuad> bitDirections;
 
@@ -249,6 +250,7 @@ public:
   BitsFiller(DrawingContext &ctx, uint8_t maxSpawnBits, uint8_t startingSpeed, unsigned long lifespan, vector<EdgeTypesQuad> bitDirections)
     : ctx(ctx), maxSpawnBits(maxSpawnBits), startingSpeed(startingSpeed), bitDirections(bitDirections), lifespan(lifespan) {
     bits.reserve(maxSpawnBits);
+    maxBitsPerSecond = 1000 * maxSpawnBits / lifespan;
   };
 
   void fadeUpForBit(Bit &bit, PixelIndex px, int distanceRemaining, unsigned long lastMove) {
@@ -455,17 +457,17 @@ public:
   uint8_t loopCounter = 0;
   bool movedOff = false;
   void update() {
-    if (bitsFiller.bits[pentaState.index].px == kTrianglePointLeds[2]) {
+    if (bitsFiller.bits[pentaState.colorIndex].px == kTrianglePointLeds[2]) {
       // finished crossing
       for (BitsFiller::Bit &bit : bitsFiller.bits) {
         bit.directions = MakeEdgeTypesQuad(Edge::clockwise);
         bitsFiller.fadeDown = 7;
       }
     }
-    if (bitsFiller.bits[pentaState.index].px != kTrianglePointLeds[0]) {
+    if (bitsFiller.bits[pentaState.colorIndex].px != kTrianglePointLeds[0]) {
       movedOff = true;
     }
-    if (movedOff && bitsFiller.bits[pentaState.index].px == kTrianglePointLeds[0]) {
+    if (movedOff && bitsFiller.bits[pentaState.colorIndex].px == kTrianglePointLeds[0]) {
       loopCounter++;
       movedOff = false;
       if (loopCounter == FIVE) {
@@ -526,20 +528,18 @@ public:
 
 /* ------------------------------------------------------------------------------- */
 
-// FIXME: well this is something. it's a little frenetic/blinky
-
 class TrianglePointSource : public Pattern, PaletteRotation<CRGBPalette256> {
   BitsFiller bitsFiller;
   vector<PixelIndex> spawnPixels = kTrianglePointLeds;
 public:
-  TrianglePointSource() : bitsFiller(ctx, 50, 55, 105, {MakeEdgeTypesQuad(Edge::starwise, Edge::clockwise), 
-                                                       MakeEdgeTypesQuad(Edge::starwise, Edge::counterclockwise),
-                                                       MakeEdgeTypesQuad(Edge::counterstarwise, Edge::counterclockwise),
-                                                       MakeEdgeTypesQuad(Edge::counterstarwise, Edge::clockwise)}) {
+  TrianglePointSource() : bitsFiller(ctx, FIVE, 55, 150, {
+                                                          MakeEdgeTypesQuad(Edge::continueTo, Edge::starwise, Edge::clockwise), 
+                                                          MakeEdgeTypesQuad(Edge::continueTo, Edge::starwise, Edge::counterclockwise),
+                                                          MakeEdgeTypesQuad(Edge::continueTo, Edge::counterstarwise, Edge::counterclockwise),
+                                                          MakeEdgeTypesQuad(Edge::continueTo, Edge::counterstarwise, Edge::clockwise)
+                                                         }) {
     bitsFiller.spawnPixels = &spawnPixels;
     bitsFiller.flowRule = BitsFiller::priority;
-    bitsFiller.fadeUpDistance = 2;
-    // bitsFiller.allowedPixels = &kCircleLeds;
     bitsFiller.handleNewBit = [this](BitsFiller::Bit &bit) {
       bit.colorIndex = beatsin8(FIVE, 0, 0xFF) + bit.px + random8(FIVE);
       bit.color = getPaletteColor(bit.colorIndex);
@@ -551,6 +551,7 @@ public:
   }
   void update() {
     bitsFiller.update();
+    // luma scale some of this to make it a little less blinky
     int totalLuma = 0;
     for (CRGB &c : ctx.leds) {
       totalLuma += c.getLuma();
@@ -558,14 +559,6 @@ public:
     totalLuma /= ctx.leds.size();
     uint8_t scaled = max(0, 0xFF - 20*totalLuma);
     
-    // FIXME: just scale brightness of the whole thing, not just the points?
-    // this is supposed to mitigtate rapid pulsed brightness changes
-
-    // logf("totalluma = %i, so scaling to %i", totalLuma, scaled);
-    
-    // for (int i = 0 ; i < ctx.leds.size(); ++i) {
-    //   ctx.leds[i].nscale8(scaled);
-    // }
     for (int i = 0 ; i < FIVE; ++i) {
       ctx.leds[spawnPixels[i]] = ((CRGB)(CRGB::Gray)).scale8(scaled);
     }
@@ -577,7 +570,6 @@ public:
     return "TrianglePointSource";
   }
 };
-
 
 /* ------------------------------------------------------------------------------- */
 

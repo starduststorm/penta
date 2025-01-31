@@ -190,8 +190,28 @@ public:
   }
 };
 
+unsigned long lastModeChoose = 0;
+void chooseMode(int mode) {
+  logf("Choose mode %i", mode);
+  if (millis() - lastModeChoose < 600 && pentaState.arrowIndex == mode) {
+    static const vector<CRGB> colors = {CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple, };
+    // static const vector<CRGB> colors = {CHSV(0, 0xFF, 0xFF), ; // FIXME: test/figure out like 10 good color choices
+    pentaState.colorIndex = (pentaState.colorIndex + 1) % colors.size();
+    pentaState.color = colors[pentaState.colorIndex];
+  }
+  pentaState.arrowIndex = mode;
+  lastModeChoose = millis();
+
+  patternManager.runOneShotPattern([] (PatternRunner &runner) {
+      BlinkPixelSet *pattern = new BlinkPixelSet(pentaArrows[pentaState.arrowIndex], pentaState.color);
+      pattern->fadeInDuration = 100;
+      pattern->totalDuration = 600;
+      pattern->fadeOutDuration = 400;
+      return pattern;
+    }, patternManager.highestPriority(), 0xFF);
+}
+
 void setup() {
-  
   init_serial();
 
   randomSeed(lsb_noise(UNCONNECTED_PIN_1, 8 * sizeof(uint32_t)));
@@ -206,46 +226,34 @@ void setup() {
   TouchButton *tbs[FIVE];
   for (int i = 0; i < FIVE; ++i) {
     tbs[i] = new TouchButton(i);
-    // tbs[i]->onSinglePress([i] {
-    //   logf("Press touch button %i!", i);
-    // });
+    tbs[i]->onSinglePress([i] {
+      chooseMode(i);
+    });
     controls.addControl(tbs[i]);
   }
-  tbs[0]->onSinglePress([] {
-    pentaState.index = (pentaState.index + 1) % FIVE;
-    pentaState.color = CHSV(0xFF * pentaState.index / FIVE, 0xFF, 0xFF);
-
-    patternManager.runOneShotPattern([] (PatternRunner &runner) {
-      BlinkPixelSet *pattern = new BlinkPixelSet(pentaTriangles[pentaState.index], pentaState.color);
-      pattern->fadeInDuration = 100;
-      pattern->totalDuration = 600;
-      pattern->fadeOutDuration = 400;
-      return pattern;
-    }, 1, 0xFF);
-  });
   
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
   
+  patternManager.registerPattern<StarwisePattern>();
   patternManager.registerPattern<BreadthFirstPattern>();
   patternManager.registerPattern<FiveBitsPattern>();
-  patternManager.registerPattern<StarwisePattern>();
   patternManager.registerPattern<StarMazePattern>();
   patternManager.registerPattern<TrianglePointSource>();
-  
+
   patternManager.setupRandomRunner(30*1000);
 
-  // patternManager.setTestRunner<BreadthFirstPattern>();
+  // patternManager.setTestRunner<TrianglePointSource>();
 
   patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kCircleLeds, pentaState.color);
   }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(35*1000, 300, -320*pentaState.index));
-  }, 0, 0xFF);
+    return ease8InOutCubic(sawtoothEvery(35*1000, 300, -320*pentaState.colorIndex));
+  }, 1, 0x7F);
 
   patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kStarLeds, pentaState.color);
   }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(55*1000, 300, 320*pentaState.index + 500));
+    return ease8InOutCubic(sawtoothEvery(55*1000, 300, 320*pentaState.colorIndex + 500));
   }, 1, 0xFF);
 
   initLEDGraph();
