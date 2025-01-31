@@ -3,7 +3,9 @@
 
 #include <FastLED.h>
 #include <vector>
+#include <set>
 #include <functional>
+#include <optional>
 
 #include <util.h>
 #include <drawing.h>
@@ -13,7 +15,7 @@
 
 struct PentaState {
   uint8_t index=0;
-  CRGB color=CRGB::White;
+  CRGB color=CRGB::Red;
 };
 PentaState pentaState;
 
@@ -22,7 +24,9 @@ PentaState pentaState;
 class BitsFiller {
 public:
   typedef enum : uint8_t { random, priority, split } FlowRule;
+  bool requireExactEdgeTypeMatch = false;
   typedef enum : uint8_t { maintainPopulation, manualSpawn } SpawnRule;
+  bool preventReverseFlow = false; // if true, prevent bits from naturally flowing A->B->A
  
   struct Bit {
     friend BitsFiller;
@@ -33,6 +37,8 @@ public:
     uint8_t colorIndex; // storage only
     
     PixelIndex px;
+    PixelIndex lastPx;
+    optional<PixelIndex> continueToPx;
     EdgeTypesQuad directions;
     
     unsigned long lifespan;
@@ -78,26 +84,11 @@ private:
   Bit &makeBit(Bit *fromBit=NULL) {
     assert(bits.size() < 255, "Too many bits");
     // the bit directions at the BitsFiller level may contain multiple options, choose one at random for this bit
-    EdgeTypesQuad directionsForBit = {0};
+    EdgeTypesQuad directionsForBit = bitDirections[random8(bitDirections.size())];
 
     if (fromBit) {
-      // FIXME: how is this actually splitting? is splitting broken?
       bits.emplace_back(*fromBit);
-
     } else {
-      for (int n = 0; n < 4; ++n) {
-        uint8_t bit[EdgeTypesCount] = {0};
-        uint8_t bitcount = 0;
-        for (int i = 0; i < EdgeTypesCount; ++i) {
-          uint8_t byte = bitDirections.quad >> (n * EdgeTypesCount);
-          if (byte & 1 << i) {
-            bit[bitcount++] = i;
-          }
-        }
-        if (bitcount) {
-          directionsForBit.quad |= 1 << (bit[random8()%bitcount] + n * EdgeTypesCount);
-        }
-      }
       bits.emplace_back(spawnLocation(), directionsForBit, lifespan);
       bits.back().speed = this->startingSpeed;
     }
@@ -105,45 +96,72 @@ private:
   }
 
   void killBit(uint8_t bitIndex) {
+    // logf("killbit %i", bitIndex);
     handleKillBit(bits[bitIndex]);
     bits.erase(bits.begin() + bitIndex);
   }
 
   void splitBit(Bit &bit, PixelIndex toIndex) {
+    // logf("Splitting bit at %i to %i", bit.px, toIndex);
     assert(flowRule == split, "are we splitting or not");
     Bit &split = makeBit(&bit);
     split.px = toIndex;
+    split.lastPx = bit.px;
   }
 
-  bool isIndexAllowed(PixelIndex index) {
+  bool isIndexAllowedForBit(Bit &bit, PixelIndex index) {
+    if (preventReverseFlow && index == bit.lastPx) {
+      return false;
+    }
     if (allowedPixels) {
       return allowedPixels->end() != allowedPixels->find(index);
     }
     return true;
   }
 
-  vector<Edge> edgeCandidates(PixelIndex index, EdgeTypesQuad bitDirections) {
+  vector<Edge> edgeCandidates(Bit &bit) {
     vector<Edge> nextEdges;
     switch (flowRule) {
       case priority: {
-        auto adj = ledgraph.adjacencies(index, bitDirections);
+        auto adj = ledgraph.adjacencies(bit.px, bit.directions, requireExactEdgeTypeMatch);
+        if (bit.continueToPx.has_value()) {
+          // After using continueToPx to cross an intersection, we will catch the continueTo edge in the backwards direction. Ignore this.
+          bool wrongDirectionContinueTo = true;
+          for (auto edge : adj) {
+            if (edge.to == bit.continueToPx) {
+              wrongDirectionContinueTo = false;
+              break;
+            }
+          }
+          if (wrongDirectionContinueTo) {
+            bit.continueToPx.reset();
+          }
+        }
+        optional<PixelIndex> continueToPx;
         for (auto edge : adj) {
           // logf("edgeCandidates: index %i has %i adjacencies matching directions %i (%i,%i)", 
               // index, adj.size(), (int)bitDirections.pair, bitDirections.edgeTypes.first, bitDirections.edgeTypes.second);
           // loglf("checking if adj index %i is allowed for edge from %i types %i...", (int)edge.to, (int)edge.from, (int)edge.types);
-          if (isIndexAllowed(edge.to)) {
-            nextEdges.push_back(edge);
-            break;
+          if (isIndexAllowedForBit(bit, edge.to)) {
+            if (edge.types & EdgeType::continueTo) {
+              // continueToPx: stash off the pixel to continue to across an intersection in order to differentiate between two priority edges with the same edge types
+              continueToPx = edge.to;
+            } else if (!bit.continueToPx.has_value() || bit.continueToPx == edge.to) {
+              nextEdges.push_back(edge);
+              bit.continueToPx.reset();
+              break;
+            }
           }
         }
+        bit.continueToPx = continueToPx;
         break;
       }
       case random:
       case split: {
-        auto allAdj = ledgraph.adjacencies(index, bitDirections);
+        auto allAdj = ledgraph.adjacencies(bit.px, bit.directions, requireExactEdgeTypeMatch);
         vector<Edge> allowedEdges;
         for (auto a : allAdj) {
-          if (isIndexAllowed(a.to)) {
+          if (isIndexAllowedForBit(bit, a.to)) {
             allowedEdges.push_back(a);
           }
         }
@@ -166,23 +184,28 @@ private:
         break;
       }
     }
-    // TODO: does not handle duplicates in the case of the same vertex being reachable via multiple edges
-    assert(nextEdges.size() <= 4, "no pixel in this design has more than 4 adjacencies but index %i had %u", index, nextEdges.size());
     return nextEdges;
   }
 
   bool flowBit(uint8_t bitIndex) {
-    vector<Edge> nextEdges = edgeCandidates(bits[bitIndex].px, bits[bitIndex].directions);
+    vector<Edge> nextEdges = edgeCandidates(bits[bitIndex]);
     if (nextEdges.size() == 0) {
       // leaf behavior
       // logf("  no path for bit %i", bitIndex);
       killBit(bitIndex);
       return false;
     } else {
-      bits[bitIndex].px = nextEdges.front().to;
-      for (unsigned i = 1; i < nextEdges.size(); ++i) {
-        splitBit(bits[bitIndex], nextEdges[i].to);
+      set<PixelIndex> toVertexes; // dedupe
+      for (unsigned i = 0; i < nextEdges.size(); ++i) {
+        toVertexes.insert(nextEdges[i].to);
       }
+      if (toVertexes.size() > 1) {
+        for (PixelIndex idx : toVertexes) {
+          splitBit(bits[bitIndex], idx);
+        }
+      }
+      bits[bitIndex].lastPx = bits[bitIndex].px;
+      bits[bitIndex].px = nextEdges.front().to;
     }
     return true;
   }
@@ -207,14 +230,14 @@ public:
   uint8_t maxSpawnBits;
   uint8_t maxBitsPerSecond = 0; // limit how fast new bits are spawned, 0 = no limit
   uint8_t startingSpeed; // for new particles ; pixels/second
-  EdgeTypesQuad bitDirections;
+  vector<EdgeTypesQuad> bitDirections;
 
   unsigned long lifespan = 0; // in milliseconds, forever if 0
 
   FlowRule flowRule = random;
   SpawnRule spawnRule = maintainPopulation;
   uint8_t fadeUpDistance = 0; // fade up n pixels ahead of bit motion
-  EdgeTypes splitDirections = EdgeType::all; // if flowRule is split, which directions are allowed to split
+  EdgeTypes splitDirections = ~(EdgeType::continueTo); // if flowRule is split, which directions are allowed to split
   
   const vector<PixelIndex> *spawnPixels = NULL; // list of pixels to automatically spawn bits on
   const set<PixelIndex> *allowedPixels = NULL; // set of pixels that bits are allowed to travel to
@@ -223,14 +246,13 @@ public:
   function<void(Bit &, uint8_t)> handleUpdateBit = [](Bit &bit, uint8_t index){}; // called once per bit per frame
   function<void(Bit &)> handleKillBit = [](Bit &bit){};
 
-  BitsFiller(DrawingContext &ctx, uint8_t maxSpawnBits, uint8_t startingSpeed, unsigned long lifespan, vector<EdgeTypes> bitDirections)
-    : ctx(ctx), maxSpawnBits(maxSpawnBits), startingSpeed(startingSpeed), lifespan(lifespan) {
-      this->bitDirections = MakeEdgeTypesQuad(bitDirections);
+  BitsFiller(DrawingContext &ctx, uint8_t maxSpawnBits, uint8_t startingSpeed, unsigned long lifespan, vector<EdgeTypesQuad> bitDirections)
+    : ctx(ctx), maxSpawnBits(maxSpawnBits), startingSpeed(startingSpeed), bitDirections(bitDirections), lifespan(lifespan) {
     bits.reserve(maxSpawnBits);
   };
 
   void fadeUpForBit(Bit &bit, PixelIndex px, int distanceRemaining, unsigned long lastMove) {
-    vector<Edge> nextEdges = edgeCandidates(px, bit.directions);
+    vector<Edge> nextEdges = edgeCandidates(bit);
 
     unsigned long mils = millis();
     unsigned long fadeUpDuration = 1000 * fadeUpDistance / bit.speed;
@@ -264,7 +286,6 @@ public:
         lastBitSpawn = mils;
       }
     }
-
     for (int i = bits.size() - 1; i >= 0; --i) {
       Bit &bit = bits[i];
       if (bit.firstFrame) {
@@ -284,7 +305,6 @@ public:
         }
       }
     }
-  
     uint8_t i = 0;
     for (Bit &bit : bits) {
       handleUpdateBit(bit, i++);
@@ -321,6 +341,10 @@ public:
     return newbit;
   }
 
+  void removeBit(uint8_t bitIndex) {
+    killBit(bitIndex);
+  }
+
   void removeAllBits() {
     bits.clear();
   }
@@ -336,38 +360,35 @@ public:
     for (Bit &bit : bits) {
       bit.speed = newSpeed;
     }
-    vector<PixelIndex> vec = {1,2,3};
-  
-    set<PixelIndex> theset(vec.begin(), vec.end());
   }
-  
 };
 
 /* ------------------------------------------------------------------------------- */
 
 class BlinkPixelSet : public Pattern {
-  set<PixelIndex> &pixelSet;
+  const set<PixelIndex> &pixelSet;
   CRGB color;
 public:
-  unsigned long fadeDuration;
+  unsigned long fadeInDuration;
+  unsigned long fadeOutDuration;
   unsigned long totalDuration;
-  BlinkPixelSet(set<PixelIndex> &pixelSet, CRGB color, unsigned long fadeDuration=0, unsigned long totalDuration=0) 
-    : pixelSet(pixelSet), color(color), fadeDuration(fadeDuration), totalDuration(totalDuration) {
-      assert(fadeDuration == 0 || totalDuration >= 2 * fadeDuration, "need time to fade in and out");
+  BlinkPixelSet(const set<PixelIndex> &pixelSet, CRGB color, unsigned long fadeInDuration=0, unsigned long fadeOutDuration=0, unsigned long totalDuration=0) 
+    : pixelSet(pixelSet), color(color), fadeInDuration(fadeInDuration), fadeOutDuration(fadeOutDuration), totalDuration(totalDuration) {
+      assert(totalDuration == 0 || totalDuration >= fadeInDuration + fadeOutDuration, "need time to fade in and out");
     }
   void update() {
     if (totalDuration > 0 && runTime() > totalDuration) {
       stop();
     } else {
       CRGB drawColor = color;
-      if (fadeDuration > 0) {
-        uint8_t fade = min(0xFF, 0xFF * runTime() / fadeDuration);
-        if (totalDuration > 0) {
-          // also fade out
-          fade = scale8(fade, min(0xFF, 0xFF * (totalDuration - runTime()) / fadeDuration));
-        }
-        drawColor = drawColor.scale8(ease8InOutCubic(fade));
+      uint8_t fade = 0xFF;
+      if (fadeInDuration > 0) {
+        fade = min(0xFF, 0xFF * runTime() / fadeInDuration);
       }
+      if (fadeOutDuration > 0) {
+        fade = scale8(fade, min(0xFF, 0xFF * (totalDuration - runTime()) / fadeOutDuration));
+      }
+      drawColor = drawColor.scale8(ease8InOutCubic(fade));
       for (PixelIndex idx : pixelSet) {
        ctx.leds[idx] = drawColor;
       }
@@ -386,12 +407,8 @@ public:
   StarMazePattern() : bitsFiller(ctx, 1, 90, 0, {Edge::starwise}) {
     bitsFiller.spawnPixels = &kStarwiseLeds;
   }
-  // uint8_t lastIndex = 0;
   void update() {
-    // ctx.leds.fadeToBlackBy(5);
-    // uint8_t curIndex = runTime()/10 % kStarwiseLeds.size();
-    // ctx.leds[kStarwiseLeds[curIndex]] = CRGB::Purple;
-    bitsFiller.bits[0].color = CHSV(millis()/10, 0xFF, 0xFF);
+    bitsFiller.bits[0].color = getShiftingPaletteColor(0);
     bitsFiller.update();
   }
 
@@ -401,22 +418,192 @@ public:
 };
 
 class StarwisePattern : public Pattern, PaletteRotation<CRGBPalette256> {
-  BitsFiller bitsFiller;
 public:
-  StarwisePattern() : bitsFiller(ctx, 1, 90, 0, {Edge::starwise}) {
-    // bitsFiller.spawnPixels = &kStarwiseLeds;
-  }
-  // uint8_t lastIndex = 0;
+  StarwisePattern() { }
   void update() {
     ctx.leds.fadeToBlackBy(5);
     uint8_t curIndex = runTime()/10 % kStarwiseLeds.size();
     ctx.leds[kStarwiseLeds[curIndex]] = pentaState.color;
-    // bitsFiller.bits[0].color = CRGB(millis()/10, 0xFF, 0xFF);
-    // bitsFiller.update();
   }
 
   const char *description() {
     return "StarwisePattern";
+  }
+};
+
+/* ------------------------------------------------------------------------------- */
+
+class FiveBitsPattern : public Pattern, PaletteRotation<CRGBPalette256> {
+  BitsFiller bitsFiller;
+public:
+  FiveBitsPattern() : bitsFiller(ctx, 0, 45, 0, {}) {
+    minBrightness = 20;
+    maxColorJump = 100;
+    bitsFiller.spawnPixels = &kCircleLedsInOrder;
+    bitsFiller.flowRule = BitsFiller::priority;
+    for (int i = 0; i < FIVE; ++i) {
+      BitsFiller::Bit &bit = bitsFiller.addBit();
+      bit.px = kCircleLedsInOrder[i * kCircleLedsInOrder.size() / FIVE];
+      bit.directions = MakeEdgeTypesQuad(Edge::clockwise);
+    }
+    bitsFiller.handleUpdateBit = [this](BitsFiller::Bit &bit, uint8_t index) {
+      bit.color = getShiftingPaletteColor(0xFF * index/FIVE, FIVE);
+    };
+    bitsFiller.fadeDown = 7;
+  }
+  
+  uint8_t loopCounter = 0;
+  bool movedOff = false;
+  void update() {
+    if (bitsFiller.bits[pentaState.index].px == kTrianglePointLeds[2]) {
+      // finished crossing
+      for (BitsFiller::Bit &bit : bitsFiller.bits) {
+        bit.directions = MakeEdgeTypesQuad(Edge::clockwise);
+        bitsFiller.fadeDown = 7;
+      }
+    }
+    if (bitsFiller.bits[pentaState.index].px != kTrianglePointLeds[0]) {
+      movedOff = true;
+    }
+    if (movedOff && bitsFiller.bits[pentaState.index].px == kTrianglePointLeds[0]) {
+      loopCounter++;
+      movedOff = false;
+      if (loopCounter == FIVE) {
+        // take a dip into the star
+        for (BitsFiller::Bit &bit : bitsFiller.bits) {
+          bit.directions = MakeEdgeTypesQuad(Edge::continueTo, Edge::starwise, Edge::clockwise);
+        }
+        bitsFiller.fadeDown = 4;
+        loopCounter = 0;
+      }
+    }
+    bitsFiller.update();
+  }
+
+  const char *description() {
+    return "FiveBitsPattern";
+  }
+};
+
+/* ------------------------------------------------------------------------------- */
+
+class BreadthFirstPattern : public Pattern, PaletteRotation<CRGBPalette256> {
+  BitsFiller bitsFiller;
+public:
+  BreadthFirstPattern() : bitsFiller(ctx, 0, 35, 500, {Edge::all}) {
+    bitsFiller.flowRule = BitsFiller::split;
+    bitsFiller.preventReverseFlow = true;
+    bitsFiller.handleNewBit = [this](BitsFiller::Bit &bit) {
+      bit.colorIndex = beatsin8(FIVE, 0, 0xFF) + bit.px + random8(FIVE);
+      bit.color = getPaletteColor(bit.colorIndex);
+    };
+    bitsFiller.handleUpdateBit = [this](BitsFiller::Bit &bit, PixelIndex index) {
+      bit.color = getPaletteColor(bit.colorIndex+bit.age()/FIVE, 0xFF - 0xFF * bit.age() / bit.lifespan);
+    };
+    bitsFiller.fadeDown = 3;
+  }
+  unsigned long lastBitAdd = 0;
+  void update() {
+    if (millis() - lastBitAdd > bitsFiller.lifespan / 2) {
+      bitsFiller.addBit();
+      lastBitAdd = millis();
+    }
+    bitsFiller.update();
+    bool existing[0xFF] = {0};
+    for (int index = bitsFiller.bits.size()-1; index >= 0; --index) {
+      if (existing[bitsFiller.bits[index].px]) {
+        // logf("Removing duplicate bit: %i", bitsFiller.bits[index].px);
+        bitsFiller.removeBit(index);
+      } else {
+        existing[bitsFiller.bits[index].px] = true;
+      }
+    }
+  }
+  const char *description() {
+    return "BreadthFirstPattern";
+  }
+};
+
+/* ------------------------------------------------------------------------------- */
+
+// FIXME: well this is something. it's a little frenetic/blinky
+
+class TrianglePointSource : public Pattern, PaletteRotation<CRGBPalette256> {
+  BitsFiller bitsFiller;
+  vector<PixelIndex> spawnPixels = kTrianglePointLeds;
+public:
+  TrianglePointSource() : bitsFiller(ctx, 50, 55, 105, {MakeEdgeTypesQuad(Edge::starwise, Edge::clockwise), 
+                                                       MakeEdgeTypesQuad(Edge::starwise, Edge::counterclockwise),
+                                                       MakeEdgeTypesQuad(Edge::counterstarwise, Edge::counterclockwise),
+                                                       MakeEdgeTypesQuad(Edge::counterstarwise, Edge::clockwise)}) {
+    bitsFiller.spawnPixels = &spawnPixels;
+    bitsFiller.flowRule = BitsFiller::priority;
+    bitsFiller.fadeUpDistance = 2;
+    // bitsFiller.allowedPixels = &kCircleLeds;
+    bitsFiller.handleNewBit = [this](BitsFiller::Bit &bit) {
+      bit.colorIndex = beatsin8(FIVE, 0, 0xFF) + bit.px + random8(FIVE);
+      bit.color = getPaletteColor(bit.colorIndex);
+    };
+    bitsFiller.handleUpdateBit = [this](BitsFiller::Bit &bit, PixelIndex index) {
+      bit.color = getPaletteColor(bit.colorIndex, 0xFF - 0xFF * bit.age() / bit.lifespan);
+    };
+    bitsFiller.fadeDown = 1;
+  }
+  void update() {
+    bitsFiller.update();
+    int totalLuma = 0;
+    for (CRGB &c : ctx.leds) {
+      totalLuma += c.getLuma();
+    }
+    totalLuma /= ctx.leds.size();
+    uint8_t scaled = max(0, 0xFF - 20*totalLuma);
+    
+    // FIXME: just scale brightness of the whole thing, not just the points?
+    // this is supposed to mitigtate rapid pulsed brightness changes
+
+    // logf("totalluma = %i, so scaling to %i", totalLuma, scaled);
+    
+    // for (int i = 0 ; i < ctx.leds.size(); ++i) {
+    //   ctx.leds[i].nscale8(scaled);
+    // }
+    for (int i = 0 ; i < FIVE; ++i) {
+      ctx.leds[spawnPixels[i]] = ((CRGB)(CRGB::Gray)).scale8(scaled);
+    }
+    for (int i = 0; i < spawnPixels.size(); ++i) {
+      spawnPixels[i] = kCircleLedsInOrder[(millis() / 100 + kCircleLedsInOrder.size() * i / spawnPixels.size())%kCircleLedsInOrder.size()];
+    }
+  }
+  const char *description() {
+    return "TrianglePointSource";
+  }
+};
+
+
+/* ------------------------------------------------------------------------------- */
+
+// // uninteresting // //
+class StarBarsPattern : public Pattern, PaletteRotation<CRGBPalette256> {
+public:
+  StarBarsPattern()  {
+  }
+  unsigned long lastPulse = 0;
+  void update() {
+    ctx.leds.fadeToBlackBy(FIVE);
+
+    if (millis() - lastPulse > 100) {
+      int barIndex = random8(15);
+      int start = 1 + FIVE*barIndex + barIndex/3;
+      vector<PixelIndex> bar(kStarwiseLeds.begin() + start, kStarwiseLeds.begin() + start);
+      CRGB color = getPaletteColor(random8());
+      for (int i = 0; i < FIVE; ++i) {
+        ctx.leds[kStarwiseLeds[start + i]] = color;
+      }
+      lastPulse = millis();
+    }
+  }
+
+  const char *description() {
+    return "StarBarsPattern";
   }
 };
 

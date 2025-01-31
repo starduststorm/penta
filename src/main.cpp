@@ -128,7 +128,7 @@ void init_serial() {
 }
 
 void serialTimeoutIndicator() {
-  FastLED.setBrightness(20);
+  FastLED.setBrightness(10);
   gpio_put(LED_LINE_0_POWER, true);
   ctx.leds.fill_solid(CRGB::Black);
   if ((millis() - setupDoneTime) % 250 < 100) {
@@ -217,23 +217,36 @@ void setup() {
 
     patternManager.runOneShotPattern([] (PatternRunner &runner) {
       BlinkPixelSet *pattern = new BlinkPixelSet(pentaTriangles[pentaState.index], pentaState.color);
-      pattern->fadeDuration = 200;
-      pattern->totalDuration = 500;
+      pattern->fadeInDuration = 100;
+      pattern->totalDuration = 600;
+      pattern->fadeOutDuration = 400;
       return pattern;
     }, 1, 0xFF);
   });
   
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
   
+  patternManager.registerPattern<BreadthFirstPattern>();
+  patternManager.registerPattern<FiveBitsPattern>();
   patternManager.registerPattern<StarwisePattern>();
   patternManager.registerPattern<StarMazePattern>();
-  patternManager.setupRandomRunner(5*1000);
+  patternManager.registerPattern<TrianglePointSource>();
+  
+  patternManager.setupRandomRunner(30*1000);
+
+  // patternManager.setTestRunner<BreadthFirstPattern>();
 
   patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kCircleLeds, pentaState.color);
   }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(5*1000, 200, 210*pentaState.index));
+    return ease8InOutCubic(sawtoothEvery(35*1000, 300, -320*pentaState.index));
   }, 0, 0xFF);
+
+  patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+    return new BlinkPixelSet(kStarLeds, pentaState.color);
+  }, [] (PatternRunner &runner) { 
+    return ease8InOutCubic(sawtoothEvery(55*1000, 300, 320*pentaState.index + 500));
+  }, 1, 0xFF);
 
   initLEDGraph();
   assert(ledgraph.adjList.size() == LED_COUNT, "adjlist size should match LED_COUNT");
