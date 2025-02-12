@@ -1297,7 +1297,7 @@
 			(at -0.0508 3.3528 0)
 			(layer "B.SilkS")
 			(hide yes)
-			(uuid "9849daee-c987-4f31-9e1c-de6f0303d5db")
+			(uuid "c34d0cdd-d81a-4a37-8694-de1d16659542")
 			(effects
 				(font
 					(size 1.5 1.5)
@@ -1310,7 +1310,7 @@
 			(at 0 -3.8608 0)
 			(layer "B.SilkS")
 			(hide yes)
-			(uuid "77277647-9507-4ebb-a554-13f620da4637")
+			(uuid "2b3d47b3-912b-4aff-8069-d254ea21a8d9")
 			(effects
 				(font
 					(size 1.5 1.5)
@@ -1635,7 +1635,7 @@
 			)
 			(fill solid)
 			(layer "B.SilkS")
-			(uuid "131c1975-5bd9-4e0e-8673-4ef1e436557d")
+			(uuid "e4ae5578-3850-4799-afd6-2c4b84482653")
 		)
 	)
 	(gr_arc
@@ -2018,8 +2018,30 @@
 		(layer "Edge.Cuts")
 		(uuid "fef02df7-ee43-4d3f-aff2-737f7d50ff32")
 	)
+	(gr_arc
+		(start 103.928178 104.585349)
+		(mid 101.108 101.8032)
+		(end 103.851608 98.945512)
+		(stroke
+			(width 0.6)
+			(type default)
+		)
+		(layer "User.1")
+		(uuid "3c3a63ad-0f2c-4440-843c-1165ea9f85d2")
+	)
 	(gr_rect
-		(start 93.4212 104.343109)
+		(start 98.841208 100.393312)
+		(end 101.1428 103.3272)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill solid)
+		(layer "User.1")
+		(uuid "4097d4a4-4dc4-4ba6-9436-5d729bfa5b71")
+	)
+	(gr_rect
+		(start 93.472 104.343109)
 		(end 106.5784 108.7468)
 		(stroke
 			(width 0.1)
@@ -2028,6 +2050,50 @@
 		(fill solid)
 		(layer "User.1")
 		(uuid "46e8b476-23b1-456d-b141-bdadbc1ca832")
+	)
+	(gr_arc
+		(start 96.07183 98.957363)
+		(mid 98.892008 101.739512)
+		(end 96.1484 104.597199)
+		(stroke
+			(width 0.6)
+			(type default)
+		)
+		(layer "User.1")
+		(uuid "5107097f-c705-4407-b051-dfa162cb3c2c")
+	)
+	(gr_rect
+		(start 98.6028 99.8728)
+		(end 101.3968 100.8888)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill solid)
+		(layer "User.1")
+		(uuid "6488e6f4-9e82-42f9-83ca-fc80d409ece9")
+	)
+	(gr_rect
+		(start 97.8916 103.682709)
+		(end 102.1588 104.343109)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill solid)
+		(layer "User.1")
+		(uuid "8c6f899b-b41d-4b2f-8f08-121728c7b538")
+	)
+	(gr_rect
+		(start 98.5012 102.666709)
+		(end 101.4476 103.682709)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill solid)
+		(layer "User.1")
+		(uuid "9cf1182a-b304-411f-a946-2adb7568ff01")
 	)
 	(gr_rect
 		(start 93.3704 94.9104)
@@ -2039,6 +2105,17 @@
 		(fill solid)
 		(layer "User.1")
 		(uuid "a06b8120-3db3-45f6-8340-90e6e7347967")
+	)
+	(gr_rect
+		(start 97.79 99.2124)
+		(end 102.0572 99.8728)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill solid)
+		(layer "User.1")
+		(uuid "fb8d6ed4-0fe2-415a-8322-e6b2b23db78a")
 	)
 	(gr_text "Stiffener: Stainless Steel\nLocation: Stiffener layer (back side)\nThickness: 0.2mm\n"
 		(at 107.5944 98.8568 0)
