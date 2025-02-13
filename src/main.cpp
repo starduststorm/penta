@@ -164,18 +164,6 @@ void startupWelcome() {
 
 // SETUP ///////////////////////////////////////////////
 
-SPSTButton *button = NULL;
-
-uint8_t sawtoothEvery(unsigned long repeatOn, unsigned riseTime, int phase=0) {
-    unsigned long sawtooth = (millis() + phase) % repeatOn;
-    if (sawtooth > repeatOn-riseTime) {
-      return 0xFF * (sawtooth-repeatOn+riseTime) / riseTime;
-    } else if (sawtooth < riseTime) {
-      return 0xFF - 0xFF * sawtooth / riseTime;
-    }
-    return 0;
-}
-
 class TouchButton : public SPSTButton {
   void initPin(int pin) { } // no-op, skip SPSTButton init and do pin init in constructor
 public:
@@ -190,10 +178,17 @@ public:
   }
 };
 
+// FIXME: temporary
+IndexedPatternRunner *indexedRunner = NULL;
+CrossfadingPatternRunner *randomRunner = NULL;
+ConditionalPatternRunner *periodics[2] = {0};
+bool autoMode = false;
+//
+
 unsigned long lastModeChoose = 0;
 void chooseMode(int mode) {
   logf("Choose mode %i", mode);
-  if (millis() - lastModeChoose < 600 && pentaState.arrowIndex == mode) {
+  if (millis() - lastModeChoose < 800 && pentaState.arrowIndex == mode) {
     static const vector<CRGB> colors = {CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple, };
     // static const vector<CRGB> colors = {CHSV(0, 0xFF, 0xFF), ; // FIXME: test/figure out like 10 good color choices
     pentaState.colorIndex = (pentaState.colorIndex + 1) % colors.size();
@@ -201,9 +196,11 @@ void chooseMode(int mode) {
   }
   pentaState.arrowIndex = mode;
   lastModeChoose = millis();
+  indexedRunner->runPatternAtIndex(pentaState.arrowIndex);
+  indexedRunner->setAlpha(0, false);
 
   patternManager.runOneShotPattern([] (PatternRunner &runner) {
-      BlinkPixelSet *pattern = new BlinkPixelSet(pentaArrows[pentaState.arrowIndex], pentaState.color);
+      BlinkPixelSet *pattern = new BlinkPixelSet(kPentaArrows[pentaState.arrowIndex], pentaState.color);
       pattern->fadeInDuration = 100;
       pattern->totalDuration = 600;
       pattern->fadeOutDuration = 400;
@@ -229,32 +226,61 @@ void setup() {
     tbs[i]->onSinglePress([i] {
       chooseMode(i);
     });
+    tbs[i]->onLongPress([] {
+      autoMode = !autoMode;
+      int duration = 1000;
+      DrawModal(240, duration, [duration](unsigned long elapsed) {
+        uint8_t brightness = elapsed < duration/5 ? (0xFF * elapsed / (duration/5)) : (elapsed > (duration - duration/5) ? 0xFF - 0xFF * (elapsed-(duration - duration/5)) / (duration/5) : 0xFF);
+        ctx.leds.fadeToBlackBy(10);
+        for (int i = 0; i < kCircleLedsInOrder.size(); ++i) {
+          ctx.leds[kCircleLedsInOrder[i]] = CHSV(millis()/2 + 5 * 0xFF * i / kCircleLedsInOrder.size(), (autoMode ? 0xFF : 0), brightness);
+        }
+      });
+      ctx.leds.fill_solid(CRGB::Black);
+      randomRunner->paused = !autoMode;
+      indexedRunner->paused = autoMode;
+      periodics[0]->paused = !autoMode;
+      periodics[1]->paused = !autoMode;
+    });
     controls.addControl(tbs[i]);
   }
   
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
   
   patternManager.registerPattern<StarwisePattern>();
-  patternManager.registerPattern<BreadthFirstPattern>();
   patternManager.registerPattern<FiveBitsPattern>();
+  patternManager.registerPattern<BreadthFirstPattern>();
   patternManager.registerPattern<StarMazePattern>();
   patternManager.registerPattern<TrianglePointSource>();
 
-  patternManager.setupRandomRunner(30*1000);
+  randomRunner = patternManager.setupRandomRunner(20*1000);
+  randomRunner->paused = true;
+  indexedRunner = patternManager.setupIndexedRunner(0);
 
-  // patternManager.setTestRunner<TrianglePointSource>();
+  // patternManager.setTestRunner<StarwisePattern>();
 
-  patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+  periodics[0] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kCircleLeds, pentaState.color);
   }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(35*1000, 300, -320*pentaState.colorIndex));
+    return ease8InOutCubic(sawtoothEvery(25*1000, 300, -320*pentaState.colorIndex));
   }, 1, 0x7F);
 
-  patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+  periodics[1] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kStarLeds, pentaState.color);
   }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(55*1000, 300, 320*pentaState.colorIndex + 500));
+    return ease8InOutCubic(sawtoothEvery(35*1000, 300, 320*pentaState.colorIndex + 500));
   }, 1, 0xFF);
+
+  // periodics[1] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+  //   return new BlinkPixelSet(kPentaArrows[pentaState.arrowIndex], pentaState.color);
+  // }, [] (PatternRunner &runner) { 
+  //   return ease8InOutCubic(sawtoothEvery(35*1000, 300, 320*pentaState.colorIndex + 500));
+  // }, 1, 0xFF);
+
+  randomRunner->paused = !autoMode;
+  indexedRunner->paused = autoMode;
+  periodics[0]->paused = !autoMode;
+  periodics[1]->paused = !autoMode;
 
   initLEDGraph();
   assert(ledgraph.adjList.size() == LED_COUNT, "adjlist size should match LED_COUNT");
@@ -286,7 +312,7 @@ void loop() {
     firstLoop = false;
   }
 
-  FastLED.setBrightness(20);
+  FastLED.setBrightness(30);
   patternManager.loop();
   controls.update();
 

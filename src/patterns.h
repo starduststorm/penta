@@ -410,7 +410,7 @@ public:
     bitsFiller.spawnPixels = &kStarwiseLeds;
   }
   void update() {
-    bitsFiller.bits[0].color = getShiftingPaletteColor(0);
+    bitsFiller.bits[0].color = getShiftingPaletteColor(0, FIVE);
     bitsFiller.update();
   }
 
@@ -425,7 +425,8 @@ public:
   void update() {
     ctx.leds.fadeToBlackBy(5);
     uint8_t curIndex = runTime()/10 % kStarwiseLeds.size();
-    ctx.leds[kStarwiseLeds[curIndex]] = pentaState.color;
+    CRGB paletteColor = getShiftingPaletteColor(0xFF * pentaState.colorIndex / FIVE + curIndex, FIVE*FIVE);
+    ctx.leds[kStarwiseLeds[curIndex]] = paletteColor.lerp8(pentaState.color, sawtoothEvery(10*1000, 1000, -500*pentaState.colorIndex));
   }
 
   const char *description() {
@@ -445,7 +446,7 @@ public:
     bitsFiller.flowRule = BitsFiller::priority;
     for (int i = 0; i < FIVE; ++i) {
       BitsFiller::Bit &bit = bitsFiller.addBit();
-      bit.px = kCircleLedsInOrder[i * kCircleLedsInOrder.size() / FIVE];
+      bit.px = kCircleLedsInOrder[(i * kCircleLedsInOrder.size() / FIVE) % kCircleLedsInOrder.size()];
       bit.directions = MakeEdgeTypesQuad(Edge::clockwise);
     }
     bitsFiller.handleUpdateBit = [this](BitsFiller::Bit &bit, uint8_t index) {
@@ -462,6 +463,7 @@ public:
       for (BitsFiller::Bit &bit : bitsFiller.bits) {
         bit.directions = MakeEdgeTypesQuad(Edge::clockwise);
         bitsFiller.fadeDown = 7;
+        bitsFiller.setAllSpeed(45);
       }
     }
     if (bitsFiller.bits[pentaState.colorIndex].px != kTrianglePointLeds[0]) {
@@ -470,16 +472,24 @@ public:
     if (movedOff && bitsFiller.bits[pentaState.colorIndex].px == kTrianglePointLeds[0]) {
       loopCounter++;
       movedOff = false;
-      if (loopCounter == FIVE) {
+      if (loopCounter == 3) {
         // take a dip into the star
         for (BitsFiller::Bit &bit : bitsFiller.bits) {
           bit.directions = MakeEdgeTypesQuad(Edge::continueTo, Edge::starwise, Edge::clockwise);
         }
-        bitsFiller.fadeDown = 4;
+        bitsFiller.fadeDown = 3;
+        bitsFiller.setAllSpeed(40);
         loopCounter = 0;
       }
     }
     bitsFiller.update();
+    // synchronization idea:
+    // check bitsFiller.bits[0] should try to pass by kTrianglePointLeds[0] at a predicatable time, e.g. it takes 55/45 seconds to complete a rotation. 
+    // make that test point happen on like even multiples of 1222ms?
+    // if it's early, it speeds up slightly. if it's late, it slows down a bit. 
+    // the simulation should want it to converge exactly for smooth animation, but i think i already have rounding errors in the bit moving code? so likely have to drift it back.
+    // we also are hitting 220fps (self-limited) so aren't going to be able to converge to the ms.
+    // hm. i wonder if it should only ever speed or slow, then allow itself to slightly overshoot, where it should be in sync with the others
   }
 
   const char *description() {
