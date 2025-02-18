@@ -1,0 +1,6 @@
+[submodule "lib/dustlib"]
+	path = lib/dustlib
+	url = git@github.com:starduststorm/dustlib.git
+[submodule "lib/FastLED"]
+	path = lib/FastLED
+	url = https://github.com/FastLED/FastLED.git
