@@ -382,7 +382,10 @@ public:
     maxBitsPerSecond = 1000 * maxSpawnBits / lifespan;
   };
 
-  int fadeDown = 4; // fadeToBlackBy units per millisecond
+  uint16_t fadeDown = 4 << 8; // fadeToBlackBy units per 1/256 millisecond
+private:
+  uint16_t fadeDownAccum = 0;
+public:
   void update() {
     unsigned long mils = millis();
 
@@ -391,7 +394,10 @@ public:
       firstFrameForBit[i] = (bits[i].lastMove == 0);
     }
 
-    ctx.leds.fadeToBlackBy(fadeDown * (mils - lastTick));
+    fadeDownAccum += fadeDown * (mils - lastTick);
+    uint8_t fadeDownThisFrame = fadeDownAccum >> 8;
+    ctx.leds.fadeToBlackBy(fadeDownThisFrame);
+    fadeDownAccum -= fadeDownThisFrame << 8;
     
     if (spawnRule == maintainPopulation) {
       for (unsigned b = bits.size(); b < maxSpawnBits; ++b) {
@@ -454,7 +460,6 @@ public:
           }
         }
         if (!bit.alive && !activelyFading) {
-          logf("dead bit %i finished fading", bitIndex);
           eraseBit(bitIndex);
         }
       }
@@ -594,7 +599,7 @@ public:
     bitsFiller.handleUpdateBit = [this](BitsFiller::Bit &bit, uint8_t index) {
       bit.color = getShiftingPaletteColor(0xFF * index/FIVE, FIVE);
     };
-    bitsFiller.fadeDown = 7;
+    bitsFiller.fadeDown = 7<<8;
   }
   
   uint8_t loopCounter = 0;
@@ -604,7 +609,7 @@ public:
       // finished crossing
       for (BitsFiller::Bit &bit : bitsFiller.bits) {
         bit.directions = MakeEdgeTypesQuad(Edge::clockwise);
-        bitsFiller.fadeDown = 7;
+        bitsFiller.fadeDown = 7<<8;
         bitsFiller.setAllSpeed(45);
       }
     }
@@ -619,7 +624,7 @@ public:
         for (BitsFiller::Bit &bit : bitsFiller.bits) {
           bit.directions = MakeEdgeTypesQuad(Edge::continueTo, Edge::starwise, Edge::clockwise);
         }
-        bitsFiller.fadeDown = 3;
+        bitsFiller.fadeDown = 3<<8;
         bitsFiller.setAllSpeed(40);
         loopCounter = 0;
       }
@@ -654,7 +659,8 @@ public:
     bitsFiller.handleUpdateBit = [this](BitsFiller::Bit &bit, PixelIndex index) {
       bit.color = getPaletteColor(bit.colorIndex+bit.age()/FIVE, 0xFF - 0xFF * bit.age() / bit.lifespan);
     };
-    bitsFiller.fadeDown = 3;
+    bitsFiller.fadeDown = 25;
+    bitsFiller.setFadeUpDistance(2);
   }
   unsigned long lastBitAdd = 0;
   void update() {
@@ -699,7 +705,7 @@ public:
     bitsFiller.handleUpdateBit = [this](BitsFiller::Bit &bit, PixelIndex index) {
       bit.color = getPaletteColor(bit.colorIndex, 0xFF - 0xFF * bit.age() / bit.lifespan);
     };
-    bitsFiller.fadeDown = 1;
+    bitsFiller.fadeDown = 1<<8;
   }
   void update() {
     bitsFiller.update();
