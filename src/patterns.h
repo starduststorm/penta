@@ -33,7 +33,6 @@ public:
     friend BitsFiller;
   private:
     unsigned long birthmilli;
-    bool firstFrame = true;
   public:
     uint8_t colorIndex; // storage only
     
@@ -49,14 +48,119 @@ public:
     uint8_t brightness = 0xFF;
     uint8_t speed = 0;
 
+  protected:
+    bool alive = true; // when a bit dies, its fadeup trail still needs to be completed so we cannot remove it immediately
+    uint8_t fadeUpDistance = 0;
+    optional<PixelIndex> *fadeHistory = NULL; // when fading up, bit.px tracks the start of the fade chain, fadeHistory tracks pixels that have not yet reached full brightness
+  public:
+
     Bit(int px, EdgeTypesQuad directions, unsigned long lifespan) 
       : px(px), directions(directions), lifespan(lifespan) {
       reset();
     }
 
+    ~Bit() noexcept {
+      delete [] fadeHistory;
+    }
+
+    Bit(const Bit &other) noexcept :
+      birthmilli(other.birthmilli),
+      lifespan(other.lifespan),
+      alive(other.alive),
+      color(other.color),
+      colorIndex(other.colorIndex),
+      px(other.px),
+      lastPx(other.lastPx),
+      continueToPx(other.continueToPx),
+      directions(other.directions),
+      brightness(other.brightness),
+      speed(other.speed),
+      lastMove(other.lastMove),
+      fadeUpDistance(other.fadeUpDistance) {
+        if (this != &other) {
+          fadeHistory = new optional<PixelIndex>[fadeUpDistance];
+          for (int i = 0; i < fadeUpDistance; ++i) {
+            fadeHistory[i] = other.fadeHistory[i];
+          }
+        }
+    }
+
+    Bit(Bit &&other) noexcept {
+      *this = std::move(other);
+    }
+
+    Bit &operator=(Bit &&other) noexcept {
+      if (this != &other) {
+        birthmilli = other.birthmilli;
+        lifespan = other.lifespan;
+        alive = other.alive;
+        
+        color = other.color;
+        colorIndex = other.colorIndex;
+        brightness = other.brightness;
+        speed = other.speed;
+        lastMove = other.lastMove,
+
+        px = other.px;
+        lastPx = other.lastPx;
+        continueToPx = other.continueToPx;
+        directions = other.directions;
+
+        fadeUpDistance = other.fadeUpDistance;
+        delete [] fadeHistory;
+        fadeHistory = other.fadeHistory;
+        other.fadeHistory = NULL;
+      }
+      return *this;
+    }
+
+    Bit &operator=(const Bit &other) {
+      if (this == &other) return *this;
+
+      birthmilli = other.birthmilli;
+      lifespan = other.lifespan;
+      alive = other.alive;
+      
+      color = other.color;
+      colorIndex = other.colorIndex;
+      brightness = other.brightness;
+      speed = other.speed;
+      lastMove = other.lastMove,
+
+      px = other.px;
+      lastPx = other.lastPx;
+      continueToPx = other.continueToPx;
+      directions = other.directions;
+
+      fadeUpDistance = other.fadeUpDistance;
+      delete [] fadeHistory;
+      fadeHistory = new optional<PixelIndex>[fadeUpDistance];
+      for (int d = 0; d < fadeUpDistance; ++d) {
+        fadeHistory[d] = other.fadeHistory[d];
+      }
+      return *this;
+    }
+
     void reset() {
       birthmilli = millis();
       color = CHSV(random8(), 0xFF, 0xFF);
+    }
+
+    void clearFadeHistory() {
+      for (unsigned i = 0; i < fadeUpDistance; ++i) {
+        fadeHistory[i] = nullopt;
+      }
+    }
+
+    void setFadeUpDistance(unsigned distance) {
+      fadeUpDistance = distance;
+      delete [] fadeHistory;
+      if (distance > 0) {
+        fadeHistory = new optional<PixelIndex>[distance];
+        clearFadeHistory();
+      } else {
+        fadeHistory = NULL;
+      }
     }
 
     unsigned long age() {
@@ -89,17 +193,26 @@ private:
 
     if (fromBit) {
       bits.emplace_back(*fromBit);
+      bits.back().clearFadeHistory();
     } else {
       bits.emplace_back(spawnLocation(), directionsForBit, lifespan);
-      bits.back().speed = this->startingSpeed;
+      bits.back().setFadeUpDistance(fadeUpDistance);
+      bits.back().speed = startingSpeed;
     }
     return bits.back();
   }
 
-  void killBit(uint8_t bitIndex) {
-    // logf("killbit %i", bitIndex);
-    handleKillBit(bits[bitIndex]);
+  void eraseBit(uint8_t bitIndex) {
+    // logf("eraseBit %i", bitIndex);
     bits.erase(bits.begin() + bitIndex);
+  }
+
+  void killBit(uint8_t bitIndex) {
+    bits[bitIndex].alive = false;
+    handleKillBit(bits[bitIndex]);
+    if (bits[bitIndex].fadeUpDistance == 0) {
+      eraseBit(bitIndex);
+    }
   }
 
   void splitBit(Bit &bit, PixelIndex toIndex) {
@@ -163,7 +276,10 @@ private:
         vector<Edge> allowedEdges;
         for (auto a : allAdj) {
           if (isIndexAllowedForBit(bit, a.to)) {
-            allowedEdges.push_back(a);
+            a.types = a.types & ~EdgeType::continueTo; // continueTo is only for flowRule priority
+            if (a.types) {
+              allowedEdges.push_back(a);
+            }
           }
         }
         if (flowRule == split) {
@@ -179,7 +295,6 @@ private:
             }
           }
         } else if (allowedEdges.size() > 0) {
-          // FIXME: EdgeType::random behavior doesn't work right with the way fadeUp is implemented
           nextEdges.push_back(allowedEdges.at(random8()%allowedEdges.size()));
         }
         break;
@@ -189,6 +304,18 @@ private:
   }
 
   bool flowBit(uint8_t bitIndex) {
+    if (fadeUpDistance > 0) {
+      // scoot the fade-up history
+      for (int d = fadeUpDistance-1; d >= 1; --d) {
+        bits[bitIndex].fadeHistory[d] = bits[bitIndex].fadeHistory[d-1];
+      }
+      bits[bitIndex].fadeHistory[0] = (bits[bitIndex].alive ? optional<PixelIndex>(bits[bitIndex].px) : nullopt);
+    }
+    
+    if (!bits[bitIndex].alive) {
+      return false;
+    }
+
     vector<Edge> nextEdges = edgeCandidates(bits[bitIndex]);
     if (nextEdges.size() == 0) {
       // leaf behavior
@@ -217,10 +344,10 @@ public:
     logf("There are %i bits", bits.size());
     for (unsigned b = 0; b < bits.size(); ++b) {
       Bit &bit = bits[b];
-      logf("Bit %i: px=%i, birthmilli=%lu, colorIndex=%u", b, bit.px, bit.birthmilli, bit.colorIndex);
+      logf("Bit %i: px=%i, birthmilli=%lu, colorIndex=%u, speed=%u", b, bit.px, bit.birthmilli, bit.colorIndex, bit.speed);
       Serial.print("  Directions: 0b");
       for (int i = 2*EdgeTypesCount - 1; i >= 0; --i) {
-        Serial.print(bit.directions.quad & (1 << i));
+        Serial.print((bit.directions.quad & (1 << i) ? 1 : 0));
       }
       Serial.println();
     }
@@ -237,15 +364,17 @@ public:
 
   FlowRule flowRule = random;
   SpawnRule spawnRule = maintainPopulation;
+private:
   uint8_t fadeUpDistance = 0; // fade up n pixels ahead of bit motion
+public:
   EdgeTypes splitDirections = ~(EdgeType::continueTo); // if flowRule is split, which directions are allowed to split
   
   const vector<PixelIndex> *spawnPixels = NULL; // list of pixels to automatically spawn bits on
   const set<PixelIndex> *allowedPixels = NULL; // set of pixels that bits are allowed to travel to
 
-  function<void(Bit &)> handleNewBit = [](Bit &bit){};
-  function<void(Bit &, uint8_t)> handleUpdateBit = [](Bit &bit, uint8_t index){}; // called once per bit per frame
-  function<void(Bit &)> handleKillBit = [](Bit &bit){};
+  function<void(Bit &)> handleNewBit = [](Bit &bit){};                            // called upon bit creation
+  function<void(Bit &, uint8_t)> handleUpdateBit = [](Bit &bit, uint8_t index){}; // called once per frame per live bit
+  function<void(Bit &)> handleKillBit = [](Bit &bit){};                           // called up on bit death
 
   BitsFiller(DrawingContext &ctx, uint8_t maxSpawnBits, uint8_t startingSpeed, unsigned long lifespan, vector<EdgeTypesQuad> bitDirections)
     : ctx(ctx), maxSpawnBits(maxSpawnBits), startingSpeed(startingSpeed), bitDirections(bitDirections), lifespan(lifespan) {
@@ -253,29 +382,14 @@ public:
     maxBitsPerSecond = 1000 * maxSpawnBits / lifespan;
   };
 
-  void fadeUpForBit(Bit &bit, PixelIndex px, int distanceRemaining, unsigned long lastMove) {
-    vector<Edge> nextEdges = edgeCandidates(bit);
-
-    unsigned long mils = millis();
-    unsigned long fadeUpDuration = 1000 * fadeUpDistance / bit.speed;
-    for (Edge edge : nextEdges) {
-      unsigned long fadeTimeSoFar = mils - lastMove + distanceRemaining * 1000/bit.speed;
-      uint8_t progress = 0xFF * fadeTimeSoFar / fadeUpDuration;
-
-      CRGB existing = ctx.leds[edge.to];
-      CRGB blended = blend(existing, bit.color, dim8_raw(progress));
-      blended.nscale8(bit.brightness);
-      ctx.leds[edge.to] = blended;
-      
-      if (distanceRemaining > 0) {
-        fadeUpForBit(bit, edge.to, distanceRemaining-1, lastMove);
-      }
-    }
-  }
-
   int fadeDown = 4; // fadeToBlackBy units per millisecond
   void update() {
     unsigned long mils = millis();
+
+    bool firstFrameForBit[bits.size()];
+    for (int i = 0 ; i < bits.size(); ++i) {
+      firstFrameForBit[i] = (bits[i].lastMove == 0);
+    }
 
     ctx.leds.fadeToBlackBy(fadeDown * (mils - lastTick));
     
@@ -288,15 +402,20 @@ public:
         lastBitSpawn = mils;
       }
     }
+
+    // // Update! // //
+    
     for (int i = bits.size() - 1; i >= 0; --i) {
       Bit &bit = bits[i];
-      if (bit.firstFrame) {
+      if (firstFrameForBit[i]) {
         // don't flow bits on the first frame. this allows pattern code to make their own bits that are displayed before being flowed
-        continue;
-      }
-      if (mils - bit.lastMove > 1000/bit.speed) {
-        bool bitAlive = flowBit(i);
-        if (bitAlive && bit.lifespan != 0 && bit.exactAge() > bit.lifespan) {
+        bit.lastMove = mils;
+      } else if (mils - bit.lastMove > 1000/bit.speed) {
+        if (!flowBit(i)) {
+          // bit may be erased now
+          continue;
+        }
+        if (bit.lifespan != 0 && bit.exactAge() > bit.lifespan) {
           killBit(i);
         }
         if (mils - bit.lastMove > 2000/bit.speed) {
@@ -307,34 +426,48 @@ public:
         }
       }
     }
-    uint8_t i = 0;
-    for (Bit &bit : bits) {
-      handleUpdateBit(bit, i++);
-    }
 
-    for (Bit &bit : bits) {
-      CRGB color = bit.color;
-      color.nscale8(bit.brightness);
-      ctx.leds[bit.px] = color;
-    }
-    
-    if (fadeUpDistance > 0) {
+    // // Draw! // //
+
+    if (fadeUpDistance == 0) {
       for (Bit &bit : bits) {
-        if (bit.firstFrame) continue;
-        // don't show full fade-up distance right when bit is created
-        int bitFadeUpDistance = min((unsigned long)fadeUpDistance, bit.speed * bit.age() / 1000);
-        if (bitFadeUpDistance > 0) {
-          // TODO: can fade-up take into account color advancement?
-          fadeUpForBit(bit, bit.px, bitFadeUpDistance - 1, bit.lastMove);
+        if (!bit.alive) continue;
+        uint8_t blendAmount = 0xFF / (fadeUpDistance+1);
+        CRGB newColor = CRGB(bit.color).nscale8(bit.brightness);
+        ctx.point(bit.px, newColor, blendBrighten, blendAmount);
+      }
+    } else { // fade up
+      for (int bitIndex = bits.size() - 1; bitIndex >= 0; --bitIndex) {
+        Bit &bit = bits[bitIndex];
+        bool activelyFading = false;
+        // logf("  bit %i at px %i", bitIndex, bit.px);
+        // loglf("fade up for bit %i: ", bitIndex);
+        for (int d = 0; d < bit.fadeUpDistance; ++d) {
+          if (bit.fadeHistory[d].has_value()) {
+            uint8_t px = bit.fadeHistory[d].value();
+            activelyFading = true;
+
+            uint16_t interMoveScale = (firstFrameForBit[bitIndex] ? 0 : (1<<16-1) * (mils - bit.lastMove) * bit.speed / 1000);
+            uint8_t blendAmount = d * 0xFF / bit.fadeUpDistance + scale16(0xFF/fadeUpDistance, interMoveScale);
+            blendAmount = scale8(blendAmount, bit.brightness);
+            ctx.point(px, bit.color, blendBrighten, blendAmount);
+          }
+        }
+        if (!bit.alive && !activelyFading) {
+          logf("dead bit %i finished fading", bitIndex);
+          eraseBit(bitIndex);
         }
       }
     }
 
-    lastTick = mils;
-
+    uint8_t i = 0;
     for (Bit &bit : bits) {
-      bit.firstFrame = false;
+      if (bit.alive) {
+        handleUpdateBit(bit, i++);
+      }
     }
+
+    lastTick = mils;
   };
 
   Bit &addBit() {
@@ -361,6 +494,15 @@ public:
     this->startingSpeed = newSpeed;
     for (Bit &bit : bits) {
       bit.speed = newSpeed;
+    }
+  }
+  
+  void setFadeUpDistance(uint8_t distance) {
+    if (distance != fadeUpDistance) {
+      for (Bit &bit : bits) {
+        bit.setFadeUpDistance(distance);
+      }
+      fadeUpDistance = distance;
     }
   }
 };
@@ -610,6 +752,34 @@ public:
 };
 
 /* ------------------------------------------------------------------------------- */
+
+class TestBits : public Pattern, PaletteRotation<CRGBPalette256> {
+  BitsFiller bitsFiller;
+public:
+  TestBits() : bitsFiller(ctx, 0, 50, 0, {Edge::starwise}) {
+    bitsFiller.flowRule = BitsFiller::priority;
+    bitsFiller.setFadeUpDistance(10);
+    bitsFiller.spawnPixels = &kStarwiseLeds;
+
+    BitsFiller::Bit &bit1 = bitsFiller.addBit();
+    bit1.px = kStarwiseLeds[kStarwiseLeds.size()/2];
+    bit1.color = CRGB::Green;
+    bit1.directions = MakeEdgeTypesQuad(Edge::continueTo, Edge::counterstarwise);
+    
+    BitsFiller::Bit &bit2 = bitsFiller.addBit();
+    bit2.px = kStarwiseLeds[0];
+    bit2.color = CRGB::Red;
+    bit2.directions = MakeEdgeTypesQuad(Edge::continueTo, Edge::starwise);
+  }
+
+  void update() {
+    bitsFiller.update();
+  }
+
+  const char *description() {
+    return "TestBits";
+  }
+};
 
 class TestPattern : public Pattern, PaletteRotation<CRGBPalette256> {
 public:
