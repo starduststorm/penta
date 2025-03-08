@@ -1,6 +1,6 @@
  // penta main.cpp
-#define DEBUG 1
-#define WAIT_FOR_SERIAL 1
+#define DEBUG 0
+#define WAIT_FOR_SERIAL 0
 
 #define FIVE (5)
 
@@ -251,14 +251,14 @@ void setup() {
   patternManager.registerPattern<StarwisePattern>();
   patternManager.registerPattern<FiveBitsPattern>();
   patternManager.registerPattern<BreadthFirstPattern>();
-  patternManager.registerPattern<StarMazePattern>();
+  patternManager.registerPattern<SmoothColors>();
   patternManager.registerPattern<TrianglePointSource>();
 
   randomRunner = patternManager.setupRandomRunner(20*1000);
   randomRunner->paused = true;
   indexedRunner = patternManager.setupIndexedRunner(0);
 
-  // patternManager.setTestRunner<StarwisePattern>();
+  // patternManager.setTestRunner<SmoothColors>();
 
   periodics[0] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kCircleLeds, pentaState.color);

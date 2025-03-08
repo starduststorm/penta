@@ -73,6 +73,8 @@ public:
   }
 };
 
+// TODO: use this as a timed pattern?
+// TODO: choose which point to start from based on millis() & synchronization offset
 class StarwisePattern : public Pattern, PaletteRotation<CRGBPalette256> {
 public:
   StarwisePattern() { }
@@ -138,13 +140,8 @@ public:
       }
     }
     bitsFiller.update();
-    // synchronization idea:
-    // check bitsFiller.particles[0] should try to pass by kTrianglePointLeds[0] at a predicatable time, e.g. it takes 55/45 seconds to complete a rotation. 
-    // make that test point happen on like even multiples of 1222ms?
-    // if it's early, it speeds up slightly. if it's late, it slows down a bit. 
-    // the simulation should want it to converge exactly for smooth animation, but i think i already have rounding errors in the bit moving code? so likely have to drift it back.
-    // we also are hitting 220fps (self-limited) so aren't going to be able to converge to the ms.
-    // hm. i wonder if it should only ever speed or slow, then allow itself to slightly overshoot, where it should be in sync with the others
+    // much better synchronization idea:
+    // bit position should be set predictably on pattern start based on millis()
   }
 
   const char *description() {
@@ -165,7 +162,7 @@ public:
       bit.color = getPaletteColor(bit.colorIndex);
     };
     bitsFiller.handleUpdateParticle = [this](Particle &bit, PixelIndex index) {
-      bit.color = getPaletteColor(bit.colorIndex+bit.age()/FIVE, 0xFF - 0xFF * bit.age() / bit.lifespan);
+      bit.color = getPaletteColor(bit.colorIndex+bit.age()/FIVE, 0xFF - bit.ageByte());
     };
     bitsFiller.fadeDown = 25;
     bitsFiller.setFadeUpDistance(2);
@@ -212,7 +209,7 @@ public:
       bit.color = getPaletteColor(bit.colorIndex);
     };
     bitsFiller.handleUpdateParticle = [this](Particle &bit, PixelIndex index) {
-      bit.color = getPaletteColor(bit.colorIndex, 0xFF - 0xFF * bit.age() / bit.lifespan);
+      bit.color = getPaletteColor(bit.colorIndex, 0xFF - bit.ageByte());
     };
     bitsFiller.fadeDown = 1<<8;
   }
@@ -263,6 +260,56 @@ public:
 
   const char *description() {
     return "StarBarsPattern";
+  }
+};
+
+class SmoothColors : public Pattern, PaletteRotation<CRGBPalette256> {
+  Particles bitsFiller;
+public:
+  SmoothColors() : bitsFiller(ledgraph, ctx, FIVE*FIVE, FIVE*FIVE, 1500, {EdgeType::all}) {
+    bitsFiller.preventReverseFlow = true;
+    bitsFiller.setFadeUpDistance(FIVE+FIVE);
+    bitsFiller.fadeDown = FIVE*FIVE;
+
+    bitsFiller.handleNewParticle = [this](Particle &bit) {
+      bit.colorIndex = beatsin8(FIVE, 0, 0xFF) + bit.px + random8(FIVE);
+      bit.color = getPaletteColor(bit.colorIndex);
+    };
+    bitsFiller.handleUpdateParticle = [this](Particle &bit, PixelIndex index) {
+      bit.color = getPaletteColor(bit.colorIndex, 0xFF - bit.ageByte());
+    };
+  }
+  
+  void update() {
+    bitsFiller.update();
+    bitsFiller.maxSpawnPopulation = beatsin8(FIVE, FIVE, FIVE*FIVE);
+    bitsFiller.maxSpawnPerSecond = 1000 * bitsFiller.maxSpawnPopulation / bitsFiller.lifespan;
+  }
+
+  const char *description() {
+    return "SmoothColors";
+  }
+};
+
+class Wanderer : public Pattern, PaletteRotation<CRGBPalette256> {
+  Particles bitsFiller;
+public:
+  Wanderer() : bitsFiller(ledgraph, ctx, 1, FIVE*FIVE*FIVE, 0, {EdgeType::all}) {
+    bitsFiller.preventReverseFlow = true;
+    bitsFiller.setFadeUpDistance(FIVE);
+    bitsFiller.fadeDown = FIVE*(FIVE+FIVE);
+
+    bitsFiller.handleUpdateParticle = [this](Particle &bit, PixelIndex index) {
+      bit.color = getPaletteColor(bit.colorIndex, 0xFF);
+    };
+  }
+  
+  void update() {
+    bitsFiller.update();
+  }
+
+  const char *description() {
+    return "Wanderer";
   }
 };
 
