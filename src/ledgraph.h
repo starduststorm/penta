@@ -11,181 +11,22 @@
 
 using namespace std;
 
-typedef uint8_t PixelIndex;
+#define LED_COUNT (FIVE*FIVE*FIVE)
 
-const uint8_t EdgeTypesCount = 8;
-typedef uint8_t EdgeTypes;
+#include "mapping.h"
 
-typedef union {
-  struct {
-    EdgeTypes first;
-    EdgeTypes second;
-  } edgeTypes;
-  uint16_t pair;
-} EdgeTypesPair;
 
-typedef union _EdgeTypesQuad {
-  struct {
-    EdgeTypes first;
-    EdgeTypes second;
-    EdgeTypes third;
-    EdgeTypes fourth;
-  } edgeTypes;
-  uint32_t quad;
-  _EdgeTypesQuad() { quad=0; }
-  _EdgeTypesQuad(EdgeTypes type) { quad=0; this->edgeTypes.first = type; }
-} EdgeTypesQuad;
+typedef enum : uint8_t {
+  none             = 0,
+  inbound          = 1 << 0, // 1
+  outbound         = 1 << 1, // 2
+  clockwise        = 1 << 2, // 4
+  counterclockwise = 1 << 3, // 8
+  starwise         = 1 << 4, // 16
+  counterstarwise  = 1 << 5, // 32
+  all              = 0xFF,
+} EdgeType;
 
-struct Edge {
-    typedef enum : uint8_t {
-        none             = 0,
-        continueTo       = 1 << 0, // used to navigate pixel intersections with multiple edges with the same edge type. If A->B->C but G->B->H also, A->C and G->H can be continueTo.
-        inbound          = 1 << 1, // 2
-        outbound         = 1 << 2, // 4
-        clockwise        = 1 << 3, // 8
-        counterclockwise = 1 << 4, // 16
-        starwise         = 1 << 5, // 32
-        counterstarwise  = 1 << 6, // 64
-        all              = 0xFF,
-    } EdgeType;
-    
-    PixelIndex from, to;
-    EdgeTypes types;
-    
-    Edge(PixelIndex from, PixelIndex to, EdgeType type) : from(from), to(to), types(type) {};
-    Edge(PixelIndex from, PixelIndex to, EdgeTypes types) : from(from), to(to), types(types) {};
-
-    Edge transpose() {
-        EdgeTypes transposeTypes = none;
-        if (types & continueTo) transposeTypes |= continueTo;
-        if (types & inbound) transposeTypes |= outbound;
-        if (types & outbound) transposeTypes |= inbound;
-        if (types & clockwise) transposeTypes |= counterclockwise;
-        if (types & counterclockwise) transposeTypes |= clockwise;
-        if (types & starwise) transposeTypes |= counterstarwise;
-        if (types & counterstarwise) transposeTypes |= starwise;
-        return Edge(to, from, transposeTypes);
-    }
-};
-
-typedef Edge::EdgeType EdgeType;
-typedef uint8_t EdgeTypes;
-
-EdgeTypesPair MakeEdgeTypesPair(EdgeTypes first, EdgeTypes second) {
-    EdgeTypesPair pair;
-    pair.edgeTypes.first = first;
-    pair.edgeTypes.second = second;
-    return pair;
-}
-
-EdgeTypesQuad MakeEdgeTypesQuad(EdgeTypes first, EdgeTypes second=0, EdgeTypes third=0, EdgeTypes fourth=0) {
-    EdgeTypesQuad quad;
-    quad.edgeTypes.first = first;
-    quad.edgeTypes.second = second;
-    quad.edgeTypes.third = third;
-    quad.edgeTypes.fourth = fourth;
-    return quad;
-}
-
-EdgeTypesPair MakeEdgeTypesPair(vector<EdgeTypes> vec) {
-    assert(vec.size() <= 2, "only two edge type directions allowed");
-    unsigned size = vec.size();
-    EdgeTypesPair pair = {0};
-    if (size > 0) {
-        pair.edgeTypes.first = vec[0];
-    }
-    if (size > 1) {
-        pair.edgeTypes.second = vec[1];
-    }
-    return pair;
-}
-
-EdgeTypesQuad MakeEdgeTypesQuad(vector<EdgeTypes> vec) {
-    assert(vec.size() <= 4, "only four edge type directions allowed");
-    unsigned size = vec.size();
-    EdgeTypesQuad pair = {0};
-    if (size > 0) {
-        pair.edgeTypes.first = vec[0];
-    }
-    if (size > 1) {
-        pair.edgeTypes.second = vec[1];
-    }
-     if (size > 2) {
-        pair.edgeTypes.third = vec[2];
-    }
-     if (size > 3) {
-        pair.edgeTypes.fourth = vec[3];
-    }
-    return pair;
-}
-
-class Graph {
-public:
-    vector<vector<Edge> > adjList;
-    Graph() { }
-    Graph(vector<Edge> const &edges, int count) {
-        adjList.resize(count);
-
-        for (auto &edge : edges) {
-            addEdge(edge);
-        }
-    }
-
-    void addEdge(Edge newEdge, bool bidirectional=true) {
-        bool forwardFound = false, reverseFound = false;
-        for (Edge &edge : adjList[newEdge.from]) {
-            if (edge.to == newEdge.to) {
-                edge.types |= newEdge.types;
-                forwardFound = true;
-                break;
-            }
-        }
-        if (bidirectional) {
-            for (Edge &edge : adjList[newEdge.to]) {
-                if (edge.from == newEdge.from) {
-                    edge.types |= newEdge.transpose().types;
-                    reverseFound = true;
-                    break;
-                }
-        }
-        }
-        if (!forwardFound) {
-            adjList[newEdge.from].push_back(newEdge);
-        }
-        if (bidirectional && !reverseFound) {
-            adjList[newEdge.to].push_back(newEdge.transpose());
-        }
-    }
-
-    vector<Edge> adjacencies(PixelIndex vertex, EdgeTypesPair pair, bool exactMatch=false) {
-        vector<Edge> adjList;
-        getAdjacencies(vertex, pair.edgeTypes.first, adjList, exactMatch);
-        getAdjacencies(vertex, pair.edgeTypes.second, adjList, exactMatch);
-        return adjList;
-    }
-
-    vector<Edge> adjacencies(PixelIndex vertex, EdgeTypesQuad quad, bool exactMatch=false) {
-        vector<Edge> adjList;
-        getAdjacencies(vertex, quad.edgeTypes.first, adjList, exactMatch);
-        getAdjacencies(vertex, quad.edgeTypes.second, adjList, exactMatch);
-        getAdjacencies(vertex, quad.edgeTypes.third, adjList, exactMatch);
-        getAdjacencies(vertex, quad.edgeTypes.fourth, adjList, exactMatch);
-        return adjList;
-    }
-
-    void getAdjacencies(PixelIndex vertex, EdgeTypes matching, std::vector<Edge> &insertInto, bool exactMatch) {
-        if (matching == 0) {
-            return;
-        }
-        vector<Edge> &adj = adjList[vertex];
-        for (Edge &edge : adj) {
-            auto matchedTypes = (edge.types & matching);
-            if ((matchedTypes == matching) || (!exactMatch && matchedTypes)) {
-                insertInto.push_back(edge);
-            }
-        }
-    }
-};
 
 #define CIRCLE_LEDS 70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124
 const vector<PixelIndex> kCircleLedsInOrder = {CIRCLE_LEDS};
@@ -220,48 +61,41 @@ const set<PixelIndex> kStarLeds(kStarwiseLeds.begin(), kStarwiseLeds.end());
 Graph ledgraph;
 
 void initLEDGraph() {
-    ledgraph = Graph({}, LED_COUNT);
-    // circle
-    for (PixelIndex i = 0; i < kCircleLedsInOrder.size(); ++i) {
-        ledgraph.addEdge(Edge(kCircleLedsInOrder[i], kCircleLedsInOrder[(i+1)%kCircleLedsInOrder.size()], Edge::clockwise), true);
-    }
-    // pentaCenter
-    for (PixelIndex i = 0; i < kPentaCenterLeds.size(); ++i) {
-        ledgraph.addEdge(Edge(kPentaCenterLeds[i], kPentaCenterLeds[(i+1)%kPentaCenterLeds.size()], Edge::counterclockwise), true);
-    }
-    // starwise
-    for (PixelIndex i = 0; i < kStarwiseLeds.size(); ++i) {
-        EdgeTypes edgetypes = Edge::starwise;
-        if (i % 16 <= FIVE) {
-            edgetypes |= Edge::inbound;
-        } else if (i % 16 <= 9) {
-            edgetypes |= Edge::clockwise;
-        } else {
-            edgetypes |= Edge::counterclockwise;
-        }
-        ledgraph.addEdge(Edge(kStarwiseLeds[i], kStarwiseLeds[(i+1)%kStarwiseLeds.size()], edgetypes), true);
-    }
-    for (int i = 0; i < FIVE; ++i) {
-        // continueTo edges across starwise intersections
-        ledgraph.addEdge(Edge(kStarwiseLeds[i * 16 + 4], kStarwiseLeds[i * 16 + 6], Edge::continueTo), true);
-        ledgraph.addEdge(Edge(kStarwiseLeds[i * 16 + 8], kStarwiseLeds[i * 16 + 10], Edge::continueTo), true);
-    }
-}
+  ledgraph = Graph({}, LED_COUNT);
 
-void graphTest(DrawingContext &ctx) {
-    ctx.leds.fill_solid(CRGB::Black);
-    int leader = (360+millis() / 200) % LED_COUNT;
-    // leader = millis() % 2000 < 1000 ? 0 : 228;
-    
-    for (int i = 0; i < LED_COUNT;++i) {
-        vector<Edge> edges = ledgraph.adjList[(leader+41*i)%LED_COUNT];
-        // logf("Highlighting leader = %i with %i edges", leader, edges.size());
-        for (Edge edge : edges) {
-            ctx.leds[edge.from] = CRGB::Blue;
-            ctx.leds[edge.to] = CRGB::Green;
-        }
+  ledgraph.transposeMap = {
+                            {inbound,outbound}, 
+                            {outbound,inbound}, 
+                            {clockwise,counterclockwise}, 
+                            {counterclockwise,clockwise}, 
+                            {starwise,counterstarwise}, 
+                            {counterstarwise,starwise}, 
+                          };
+  // circle
+  for (PixelIndex i = 0; i < kCircleLedsInOrder.size(); ++i) {
+    ledgraph.addEdge(Edge(kCircleLedsInOrder[i], kCircleLedsInOrder[(i+1)%kCircleLedsInOrder.size()], EdgeType::clockwise), true);
+  }
+  // pentaCenter
+  for (PixelIndex i = 0; i < kPentaCenterLeds.size(); ++i) {
+    ledgraph.addEdge(Edge(kPentaCenterLeds[i], kPentaCenterLeds[(i+1)%kPentaCenterLeds.size()], EdgeType::counterclockwise), true);
+  }
+  // starwise
+  for (PixelIndex i = 0; i < kStarwiseLeds.size(); ++i) {
+    EdgeTypes edgetypes = EdgeType::starwise;
+    if (i % 16 <= FIVE) {
+      edgetypes |= EdgeType::inbound;
+    } else if (i % 16 <= 9) {
+      edgetypes |= EdgeType::clockwise;
+    } else {
+      edgetypes |= EdgeType::counterclockwise;
     }
-    
+    ledgraph.addEdge(Edge(kStarwiseLeds[i], kStarwiseLeds[(i+1)%kStarwiseLeds.size()], edgetypes), true);
+  }
+  for (int i = 0; i < FIVE; ++i) {
+    // continueTo edges across starwise intersections
+    ledgraph.addEdge(Edge(kStarwiseLeds[i * 16 + 4], kStarwiseLeds[i * 16 + 6], EdgeType::starwise, true), true);
+    ledgraph.addEdge(Edge(kStarwiseLeds[i * 16 + 8], kStarwiseLeds[i * 16 + 10], EdgeType::starwise, true), true);
+  }
 }
 
 #endif

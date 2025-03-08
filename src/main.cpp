@@ -40,17 +40,18 @@ const int sampleRate = 1000;
 #include <functional>
 #include <FastLED.h>
 
-#define LED_COUNT (FIVE*FIVE*FIVE)
-
-#include <patterning.h>
 #include <util.h>
 #include <drawing.h>
 #include <controls.h>
 
-#include "patterns.h"
 #include "ledgraph.h"
 
+using DrawingContext = PixelStorage<LED_COUNT>;
 DrawingContext ctx;
+
+#include <patterning.h>
+#include "patterns.h"
+
 HardwareControls controls;
 
 FrameCounter fc;
