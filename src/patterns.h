@@ -22,13 +22,13 @@ PentaState pentaState;
 /* ------------------------------------------------------------------------------- */
 
 class BlinkPixelSet : public Pattern {
-  const set<PixelIndex> &pixelSet;
+  const std::set<PixelIndex> &pixelSet;
   CRGB color;
 public:
   unsigned long fadeInDuration;
   unsigned long fadeOutDuration;
   unsigned long totalDuration;
-  BlinkPixelSet(const set<PixelIndex> &pixelSet, CRGB color, unsigned long fadeInDuration=0, unsigned long fadeOutDuration=0, unsigned long totalDuration=0) 
+  BlinkPixelSet(const std::set<PixelIndex> &pixelSet, CRGB color, unsigned long fadeInDuration=0, unsigned long fadeOutDuration=0, unsigned long totalDuration=0) 
     : pixelSet(pixelSet), color(color), fadeInDuration(fadeInDuration), fadeOutDuration(fadeOutDuration), totalDuration(totalDuration) {
       assert(totalDuration == 0 || totalDuration >= fadeInDuration + fadeOutDuration, "need time to fade in and out");
     }
@@ -193,7 +193,7 @@ public:
 
 class TrianglePointSource : public Pattern, PaletteRotation<CRGBPalette256> {
   Particles bitsFiller;
-  vector<PixelIndex> spawnPixels = kTrianglePointLeds;
+  std::vector<PixelIndex> spawnPixels = kTrianglePointLeds;
 public:
   TrianglePointSource() : bitsFiller(ledgraph, ctx, FIVE, 55, 150, {
                                                           MakeEdgeTypesQuad(EdgeType::starwise, EdgeType::clockwise), 
@@ -249,7 +249,7 @@ public:
     if (millis() - lastPulse > 100) {
       int barIndex = random8(15);
       int start = 1 + FIVE*barIndex + barIndex/3;
-      vector<PixelIndex> bar(kStarwiseLeds.begin() + start, kStarwiseLeds.begin() + start);
+      std::vector<PixelIndex> bar(kStarwiseLeds.begin() + start, kStarwiseLeds.begin() + start);
       CRGB color = getPaletteColor(random8());
       for (int i = 0; i < FIVE; ++i) {
         ctx.leds[kStarwiseLeds[start + i]] = color;
@@ -272,7 +272,7 @@ public:
     bitsFiller.fadeDown = FIVE*FIVE;
 
     bitsFiller.handleNewParticle = [this](Particle &bit) {
-      bit.colorIndex = beatsin8(FIVE, 0, 0xFF) + bit.px + random8(FIVE);
+      bit.colorIndex = beatsin8(FIVE, 0, 0xFF) + bit.px;
       bit.color = getPaletteColor(bit.colorIndex);
     };
     bitsFiller.handleUpdateParticle = [this](Particle &bit, PixelIndex index) {
@@ -310,6 +310,58 @@ public:
 
   const char *description() {
     return "Wanderer";
+  }
+};
+
+/* ------------------------------------------------------------------------------- */
+
+
+class SoundBits : public Pattern, public PaletteRotation<CRGBPalette256>, FFTReceiver {
+  Particles particles;
+public:
+  SoundBits() : particles(ledgraph, ctx, 0, 60, 1200, {all}) {
+    particles.flowRule = Particles::random;
+    particles.setFadeUpDistance(3);
+    particles.spawnPixels = &kPentaCenterLeds;
+    particles.fadeDown = 4<<8;
+    particles.preventReverseFlow = true;
+    particles.handleUpdateParticle = [](Particle &bit, uint8_t index) {
+      int raw = min(0xFF, max(0, (int)(0xFF - 0xFF * bit.age() / bit.lifespan)));
+      bit.brightness = raw;
+    };
+  }
+
+  const unsigned maxbits = FIVE*FIVE*FIVE;
+  const int soundMinThreshold = 5;
+  int soundThreshold = soundMinThreshold;
+  unsigned long lastThreshAdjust = 0;
+
+  void update() {
+    FFTFrame frame = spectrumFrame();
+    // FFTProcessing::shared()->logFrame(frame);
+    for (unsigned b = 0; b < frame.size; ++b) {
+      if (frame.spectrum[b] > soundThreshold) {
+        
+        if (particles.particles.size() < maxbits) {
+          // loglf("levels[%i]: %i; making a bit; out bits = %u, in bits = %u...", b, spectrum[b], bitsFillerOut.bits.size(), bitsFillerIn.bits.size());
+          unsigned maxlifespan = 800;//
+          Particle &bit = particles.addParticle();
+          bit.lifespan = min(maxlifespan, maxlifespan * (frame.spectrum[b]-soundThreshold)/20);
+
+          uint8_t colorIndex = millis() / 100 + 0xFF * b / 13;
+          CRGB color = getPaletteColor(colorIndex);
+          color.nscale8(min(0xFF, 0xFF * (frame.spectrum[b]-soundThreshold)/10));
+          bit.color = color;
+          bit.colorIndex = colorIndex;
+        }
+      }
+    }
+
+    particles.update();
+  }
+
+  const char *description() {
+    return "SoundBits";
   }
 };
 

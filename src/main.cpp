@@ -23,13 +23,9 @@ extern char *__brkval;
 #define LED_DATA 26
 #define LED_LINE_0_POWER 27
 
-#include <I2S.h>
-I2S i2s(INPUT);
-
-#define I2S_BCLK 28
-#define I2S_LRCLK (BCLK+1)
-#define I2S_DATA 6
-const int sampleRate = 1000;
+#define PIN_PDM_DIN 6
+#define PIN_PDM_CLK 28
+#include "audio.h"
 
 #define UNCONNECTED_PIN_1 7
 #define UNCONNECTED_PIN_2 7
@@ -46,16 +42,17 @@ const int sampleRate = 1000;
 
 #include "ledgraph.h"
 
-using DrawingContext = PixelStorage<LED_COUNT>;
-DrawingContext ctx;
-
 #include <patterning.h>
 #include "patterns.h"
 
-HardwareControls controls;
+/////////////////////
 
-FrameCounter fc;
+DrawingContext ctx;
 PatternManager patternManager(ctx);
+
+HardwareControls controls;
+FrameCounter fc;
+
 
 static bool serialTimeout = false;
 static unsigned long setupDoneTime;
@@ -101,14 +98,6 @@ int touch_setup(PIO pio_touch, int start_pin, int pin_count, const float clk_div
 }
 
 //
-
-void init_i2s() {
-  i2s.setBCLK(I2S_BCLK);
-  i2s.setDATA(I2S_DATA);
-  i2s.setBitsPerSample(32);
-  i2s.setFrequency(16000);
-  assert(i2s.begin(), "i2s");
-}
 
 void init_serial() {
   Serial.begin(57600);
@@ -190,7 +179,7 @@ unsigned long lastModeChoose = 0;
 void chooseMode(int mode) {
   logf("Choose mode %i", mode);
   if (millis() - lastModeChoose < 800 && pentaState.arrowIndex == mode) {
-    static const vector<CRGB> colors = {CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple, };
+    static const std::vector<CRGB> colors = {CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple, };
     // static const vector<CRGB> colors = {CHSV(0, 0xFF, 0xFF), ; // FIXME: test/figure out like 10 good color choices
     pentaState.colorIndex = (pentaState.colorIndex + 1) % colors.size();
     pentaState.color = colors[pentaState.colorIndex];
@@ -215,7 +204,8 @@ void setup() {
   randomSeed(lsb_noise(UNCONNECTED_PIN_1, 8 * sizeof(uint32_t)));
   random16_add_entropy(lsb_noise(UNCONNECTED_PIN_2, 8 * sizeof(uint16_t)));
 
-  init_i2s();
+  DigitalAudioProcessing::create<AudioInputPDM>(PIN_PDM_DIN, PIN_PDM_CLK);
+  FFTProcessing::create(FIVE+FIVE+FIVE);
 
   // HACK: Touch Setup needs to go before FastLED possibly because the touch pio code doesn't work when it's running off of state machine 0?
   static const float pio_clk_div = 40; // This should be tuned for the size of the buttons
@@ -248,17 +238,19 @@ void setup() {
   
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
   
-  patternManager.registerPattern<StarwisePattern>();
-  patternManager.registerPattern<FiveBitsPattern>();
-  patternManager.registerPattern<BreadthFirstPattern>();
+  // patternManager.setTestRunner<SoundBits>();
+
+  // patternManager.registerPattern<StarwisePattern>();
+  
   patternManager.registerPattern<SmoothColors>();
+  patternManager.registerPattern<FiveBitsPattern>();
+  patternManager.registerPattern<SoundBits>();
+  patternManager.registerPattern<BreadthFirstPattern>();
   patternManager.registerPattern<TrianglePointSource>();
 
   randomRunner = patternManager.setupRandomRunner(20*1000);
   randomRunner->paused = true;
   indexedRunner = patternManager.setupIndexedRunner(0);
-
-  // patternManager.setTestRunner<SmoothColors>();
 
   periodics[0] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kCircleLeds, pentaState.color);
@@ -291,6 +283,10 @@ void setup() {
 
   fc.loop();
 
+
+  // FFT
+
+
   setupDoneTime = millis();
   logf("setup done");
 }
@@ -303,15 +299,11 @@ void loop() {
     return;
   }
 
-  // int32_t l, r;
-  // i2s.read32(&l, &r);
-  // Serial.printf("%d %d\r\n", l, r);
-
   static bool firstLoop = true;
   if (firstLoop) {
     // startupWelcome();
     firstLoop = false;
-  }
+  }  
 
   FastLED.setBrightness(30);
   patternManager.loop();
@@ -320,6 +312,11 @@ void loop() {
   static bool line0power = false;
   bool line0poweron = (bool)ctx.leds;
   if (line0power != line0poweron) {
+    if (line0power) {
+      // hack: one last show to clear and last pixels before turning power off (v1 penta broken mosfet)
+      FastLED.show();
+      FastLED.delay(1);
+    }
     line0power = line0poweron;
     gpio_put(LED_LINE_0_POWER, line0poweron);
   }
