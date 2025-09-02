@@ -1,0 +1,83 @@
+(footprint "SMD_Pad_01x03_1.27mm"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0.508 -1.27 0)
+		(layer "F.SilkS")
+		(uuid "5303a0c6-7d8e-4bed-aba1-5c680bec7a1f")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(property "Value" "SMD_Pad_01x03_1.27mm"
+		(at 0.508 1.27 0)
+		(layer "F.Fab")
+		(uuid "aab722d5-5915-456f-a820-87dedb6556b1")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.08)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3c880add-bafb-4fc9-9522-4065aaa264d5")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "357392fa-18cd-45cc-8851-d11cd630ce22")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3b1f1dda-8ef1-41bd-baf3-2dfb35f16981")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole)
+	(pad "1" connect oval
+		(at -1.27 0)
+		(size 0.762 1.27)
+		(layers "F.Cu" "F.Mask")
+		(uuid "c14c366d-c67d-4d59-9a4d-5bd62064fae4")
+	)
+	(pad "2" connect oval
+		(at 0 0)
+		(size 0.762 1.27)
+		(layers "F.Cu" "F.Mask")
+		(uuid "f1ff5a49-a974-4f52-b49e-dc623922b64d")
+	)
+	(pad "3" connect oval
+		(at 1.27 0)
+		(size 0.762 1.27)
+		(layers "F.Cu" "F.Mask")
+		(uuid "9dedf410-0ba0-44e8-9046-91cadfa8e1e8")
+	)
+)
