@@ -1708,7 +1708,7 @@
 				)
 			)
 		)
-		(symbol "Device:Q_NMOS_GSD"
+		(symbol "Device:Q_NMOS_SGD"
 			(pin_names
 				(offset 0) hide)
 			(exclude_from_sim no)
@@ -1723,7 +1723,7 @@
 					(justify left)
 				)
 			)
-			(property "Value" "Q_NMOS_GSD"
+			(property "Value" "Q_NMOS_SGD"
 				(at 5.08 -1.27 0)
 				(effects
 					(font
@@ -1750,7 +1750,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "N-MOSFET transistor, gate/source/drain"
+			(property "Description" "N-MOSFET transistor, source/gate/drain"
 				(at 0 0 0)
 				(effects
 					(font
@@ -1768,7 +1768,7 @@
 					(hide yes)
 				)
 			)
-			(symbol "Q_NMOS_GSD_0_1"
+			(symbol "Q_NMOS_SGD_0_1"
 				(polyline
 					(pts
 						(xy 0.254 0) (xy -2.54 0)
@@ -1935,11 +1935,11 @@
 					)
 				)
 			)
-			(symbol "Q_NMOS_GSD_1_1"
-				(pin input line
-					(at -5.08 0 0)
+			(symbol "Q_NMOS_SGD_1_1"
+				(pin passive line
+					(at 2.54 -5.08 90)
 					(length 2.54)
-					(name "G"
+					(name "S"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -1954,10 +1954,10 @@
 						)
 					)
 				)
-				(pin passive line
-					(at 2.54 -5.08 90)
-					(length 2.54)
-					(name "S"
+				(pin input line
+					(at -5.08 0 0)
+					(length 5.08)
+					(name "G"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -11868,6 +11868,97 @@
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
 					(reference "R7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:Q_NMOS_SGD")
+		(at 261.62 100.33 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "060d5885-bad3-4b75-9b3f-3118ef22a4f0")
+		(property "Reference" "Q1"
+			(at 266.827 99.1178 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "Q_NMOS_SGD"
+			(at 266.827 101.5421 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+			(at 266.7 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 261.62 100.33 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "N-MOSFET transistor, source/gate/drain"
+			(at 261.62 100.33 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" "SI2302"
+			(at 261.62 100.33 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C727152"
+			(at 261.62 100.33 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "49868073-2f96-4906-910a-2be7d51336fc")
+		)
+		(pin "3"
+			(uuid "2d2c35bb-3155-4160-9e90-a5eeff28958d")
+		)
+		(pin "1"
+			(uuid "676f557e-6305-4458-a990-0ed9876a8f51")
+		)
+		(instances
+			(project "penta"
+				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
+					(reference "Q1")
 					(unit 1)
 				)
 			)
@@ -29405,96 +29496,6 @@
 			(project "penta"
 				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
 					(reference "#PWR053")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:Q_NMOS_GSD")
-		(at 261.62 100.33 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "d87fb04c-1156-4385-932f-5581edb87fa8")
-		(property "Reference" "Q1"
-			(at 259.334 96.012 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "Q_NMOS_GSD"
-			(at 256.286 93.472 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
-			(at 266.7 97.79 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "~"
-			(at 261.62 100.33 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "N-MOSFET transistor, gate/source/drain"
-			(at 261.62 100.33 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Designation" "SI2302"
-			(at 261.62 100.33 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "LCSC" "C727152"
-			(at 261.62 100.33 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "3"
-			(uuid "f705dbcc-acae-48d7-8107-52ce7fd5eb5c")
-		)
-		(pin "1"
-			(uuid "549a7326-0ff6-4c76-9d2e-aa1e76121011")
-		)
-		(pin "2"
-			(uuid "c699b6b5-7453-4ae0-a034-b61bd762d8f1")
-		)
-		(instances
-			(project ""
-				(path "/2e8b15b9-33da-4001-b66c-591b57065bcb"
-					(reference "Q1")
 					(unit 1)
 				)
 			)
