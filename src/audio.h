@@ -16,7 +16,6 @@
 class AudioProcessing;
 class DigitalAudioProcessing;
 class FFTProcessing;
-void onPDMdata();
 volatile int rawBufferFilled = 0;
 volatile int rawSamplesRead = 0;
 

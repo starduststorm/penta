@@ -45,6 +45,9 @@ extern char *__brkval;
 #include <patterning.h>
 #include "patterns.h"
 
+#include <remembering.h>
+PersistentStorage storage(PentaState::dataSize());
+
 /////////////////////
 
 DrawingContext ctx;
@@ -52,7 +55,6 @@ PatternManager patternManager(ctx);
 
 HardwareControls controls;
 FrameCounter fc;
-
 
 static bool serialTimeout = false;
 static unsigned long setupDoneTime;
@@ -168,34 +170,132 @@ public:
   }
 };
 
-// FIXME: temporary
+
+// TODO: the idea was to have each arrow's timed/coordinated patterns be toggled on and off with long-press
+//   this touch-feedback and animation could be improved.
+
+void reachableFrom(ParticleSim<LED_COUNT> &sim, std::vector<PixelIndex> &insertInto, std::set<PixelIndex> &visited, Particle &p, PixelIndex fromPx, EdgeTypesQuad directions) {
+  // FIXME: this stops at the first path self-intersection
+
+  visited.insert(fromPx);
+  insertInto.push_back(fromPx);
+  for (auto edge : sim.edgeCandidates(p)) {
+    if (visited.find(edge.to) == visited.end()) {
+      p.lastPx = p.px;
+      p.px = edge.to;
+      reachableFrom(sim, insertInto, visited, p, edge.to, directions);
+    } else {
+      // 
+    }
+  }
+}
+void reachableFrom(ParticleSim<LED_COUNT> &sim, std::vector<PixelIndex> &insertInto, PixelIndex fromPx, EdgeTypesQuad directions) {
+  uint8_t particleIndex = sim.particles.size();
+  auto &p = sim.addParticle();
+  p.px = fromPx;
+  p.directions = directions;
+  std::set<PixelIndex> visited;
+  reachableFrom(sim, insertInto, visited, p ,fromPx, directions);
+  sim.removeParticle(particleIndex);
+}
+
+std::vector<PixelIndex> arrows[FIVE];
+void findArrows() {
+  logf("find arrows");
+  // find arrows
+  // FIXME: this may have a bug, since trying to do it on demand was bringing up a weird timing bug 
+  for (int mode = 0; mode < FIVE; ++mode) {
+    std::vector<PixelIndex> fromStarwise, fromCounterStarwise;
+    ParticleSim<LED_COUNT> sim(ledgraph, ctx, 0, 0, 0, {starwise});
+    sim.followContinueTo = true;
+    sim.preventReverseFlow = true;
+    sim.flowRule = ParticleSim<LED_COUNT>::priority;
+  
+    reachableFrom(sim, fromStarwise, kTrianglePointLeds[mode], MakeEdgeTypesQuad(starwise));
+    reachableFrom(sim, fromCounterStarwise, kTrianglePointLeds[mode], MakeEdgeTypesQuad(counterstarwise));
+  
+    arrows[mode] = {kTrianglePointLeds[mode]};
+    // skip the pixel we started on
+    for (int i = 1; i < min(fromStarwise.size(), fromCounterStarwise.size()); ++i) {
+      arrows[mode].push_back(fromStarwise[i]);
+      if (fromStarwise[i] == fromCounterStarwise[i]) {
+        break;
+      }
+      arrows[mode].push_back(fromCounterStarwise[i]);
+    }
+    assert(fromStarwise.size() == fromCounterStarwise.size(), "wtf");
+    
+    assert(arrows[mode].size() == 44, "bad arrow found"); // FIXME: does this happen?
+  }
+}
+
 IndexedPatternRunner *indexedRunner = NULL;
-CrossfadingPatternRunner *randomRunner = NULL;
-ConditionalPatternRunner *periodics[2] = {0};
-bool autoMode = false;
-//
+ConditionalPatternRunner *periodics[5] = {0};
 
 unsigned long lastModeChoose = 0;
 void chooseMode(int mode) {
   logf("Choose mode %i", mode);
   if (millis() - lastModeChoose < 800 && pentaState.arrowIndex == mode) {
-    static const std::vector<CRGB> colors = {CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple, };
-    // static const vector<CRGB> colors = {CHSV(0, 0xFF, 0xFF), ; // FIXME: test/figure out like 10 good color choices
-    pentaState.colorIndex = (pentaState.colorIndex + 1) % colors.size();
-    pentaState.color = colors[pentaState.colorIndex];
+    pentaState.colorIndex++;
   }
   pentaState.arrowIndex = mode;
   lastModeChoose = millis();
   indexedRunner->runPatternAtIndex(pentaState.arrowIndex);
   indexedRunner->setAlpha(0, false);
 
+  storage.setValue(pentaState);
+
   patternManager.runOneShotPattern([] (PatternRunner &runner) {
-      BlinkPixelSet *pattern = new BlinkPixelSet(kPentaArrows[pentaState.arrowIndex], pentaState.color);
-      pattern->fadeInDuration = 100;
-      pattern->totalDuration = 600;
-      pattern->fadeOutDuration = 400;
-      return pattern;
-    }, patternManager.highestPriority(), 0xFF);
+    auto theset = kPentaArrows[pentaState.arrowIndex];
+    std::vector vec(theset.begin(), theset.end());
+    BlinkPixelSet *pattern = new BlinkPixelSet(vec, pentaState.color());
+    pattern->fadeInDuration = 100;
+    pattern->totalDuration = 600;
+    pattern->fadeOutDuration = 400;
+    return pattern;
+  }, patternManager.highestPriority(), 0xFF);
+}
+
+void chooseAutomode(int mode) {
+  bool turnAutomodeOn = periodics[mode] && periodics[mode]->paused;
+  logf("chooseAutomode %i, turn %s", mode, turnAutomodeOn ? "ON" : "OFF");
+  mode = constrain(mode, 0, kPentaArrows[0].size()-1);
+
+  periodics[mode]->paused = !periodics[mode]->paused;
+  pentaState.automaticModes ^= 1 << mode;
+  storage.setValue(pentaState);
+
+  int duration = 1200;
+  DrawModal(240, duration, [duration, mode, turnAutomodeOn](unsigned long elapsed) {
+    ctx.leds.fadeToBlackBy(20);
+    
+    uint8_t brightness = elapsed < duration/5 ? (0xFF * elapsed / (duration/5)) : (elapsed > (duration - duration/5) ? 0xFF - 0xFF * (elapsed-(duration - duration/5)) / (duration/5) : 0xFF);
+    
+    int theend = max(0, min(arrows[mode].size(), (int)arrows[mode].size()-arrows[mode].size()*elapsed/duration*2));
+    for (int i = arrows[mode].size()-1; i >= theend; --i) {
+      if (turnAutomodeOn) {
+        ctx.leds[arrows[mode][i]] = CHSV(millis() / 3 + i * 0xFF / arrows[mode].size(), 0xFF, brightness);
+      } else {
+        ctx.leds[arrows[mode][i]] = CRGB::White;
+      }
+    }
+    for (int i = 0; i < FIVE; ++i) {
+      if (i == mode || !periodics[i]->paused) {
+        uint8_t sectionBrightness = brightness;
+        if (i == mode) {
+          if (periodics[i]->paused && elapsed > duration/5) {
+            sectionBrightness = max(0, 0xFF - 0xFF * (int)(elapsed-duration/5)/(duration/5));
+          }
+        }
+        for (int c = 0; c < kCircleLeds.size() / FIVE; ++c) {
+          // FIXME: this relies on the circle leds being wired contiguous
+          assert(kCircleSectionStarts[i] + c < LED_COUNT, "kCircleSectionStarts[i] + c");
+          ctx.leds[kCircleSectionStarts[i] + c] = CHSV(0xFF * c / (kCircleLeds.size()/FIVE), 0xFF, sectionBrightness);
+        }
+      }
+    }
+  });
+  ctx.leds.fill_solid(CRGB::Black);
 }
 
 void setup() {
@@ -217,28 +317,19 @@ void setup() {
     tbs[i]->onSinglePress([i] {
       chooseMode(i);
     });
-    tbs[i]->onLongPress([] {
-      autoMode = !autoMode;
-      int duration = 1000;
-      DrawModal(240, duration, [duration](unsigned long elapsed) {
-        uint8_t brightness = elapsed < duration/5 ? (0xFF * elapsed / (duration/5)) : (elapsed > (duration - duration/5) ? 0xFF - 0xFF * (elapsed-(duration - duration/5)) / (duration/5) : 0xFF);
-        ctx.leds.fadeToBlackBy(10);
-        for (int i = 0; i < kCircleLedsInOrder.size(); ++i) {
-          ctx.leds[kCircleLedsInOrder[i]] = CHSV(millis()/2 + 5 * 0xFF * i / kCircleLedsInOrder.size(), (autoMode ? 0xFF : 0), brightness);
-        }
-      });
-      ctx.leds.fill_solid(CRGB::Black);
-      randomRunner->paused = !autoMode;
-      indexedRunner->paused = autoMode;
-      periodics[0]->paused = !autoMode;
-      periodics[1]->paused = !autoMode;
+    tbs[i]->onLongPress([i] {
+      chooseAutomode(i);
     });
     controls.addControl(tbs[i]);
   }
   
+  initLEDGraph();
+  assert(ledgraph.adjList.size() == LED_COUNT, "adjlist size should match LED_COUNT");
+  findArrows();
+
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
   
-  // patternManager.setTestRunner<SoundBits>();
+  // patternManager.setTestRunner<Wanderer>();
 
   // patternManager.registerPattern<StarwisePattern>();
   
@@ -248,44 +339,71 @@ void setup() {
   patternManager.registerPattern<BreadthFirstPattern>();
   patternManager.registerPattern<TrianglePointSource>();
 
-  randomRunner = patternManager.setupRandomRunner(20*1000);
-  randomRunner->paused = true;
   indexedRunner = patternManager.setupIndexedRunner(0);
 
   periodics[0] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-    return new BlinkPixelSet(kCircleLeds, pentaState.color);
+    return new BlinkPixelSet(kCircleLedsInOrder, pentaState.color());
   }, [] (PatternRunner &runner) { 
     return ease8InOutCubic(sawtoothEvery(25*1000, 300, -320*pentaState.colorIndex));
   }, 1, 0x7F);
 
   periodics[1] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-    return new BlinkPixelSet(kStarLeds, pentaState.color);
+    return new BlinkPixelSet(kStarwiseLeds, pentaState.color());
   }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(35*1000, 300, 320*pentaState.colorIndex + 500));
+    return ease8InOutCubic(sawtoothEvery(32*1000, 300, 320*pentaState.colorIndex + 500));
   }, 1, 0xFF);
 
-  // periodics[1] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-  //   return new BlinkPixelSet(kPentaArrows[pentaState.arrowIndex], pentaState.color);
-  // }, [] (PatternRunner &runner) { 
-  //   return ease8InOutCubic(sawtoothEvery(35*1000, 300, 320*pentaState.colorIndex + 500));
-  // }, 1, 0xFF);
+  periodics[2] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+    return new StarwisePattern(650);
+  }, [] (PatternRunner &runner) { 
+    return ease8InOutCubic(sawtoothEvery(39*1000, 150, 320*pentaState.colorIndex, 650));
+  }, 1, 0xFF);
 
-  randomRunner->paused = !autoMode;
-  indexedRunner->paused = autoMode;
-  periodics[0]->paused = !autoMode;
-  periodics[1]->paused = !autoMode;
+  periodics[3] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+    // TODO: it would be nice to pull the palette from the running pattern here, but we don't know if it inherits from PaletteRotation bc not all Patterns do
+    CRGBPalette256 palette;
+    PaletteManager<CRGBPalette256>::getRandomPalette(&palette);
+    return new BlinkPixelSet(kStarwiseLeds, palette);
+  }, [] (PatternRunner &runner) { 
+    return ease8InOutCubic(sawtoothEvery(18*1000, 300, 320*pentaState.colorIndex + 500));
+  }, 1, 0xFF);
 
-  initLEDGraph();
-  assert(ledgraph.adjList.size() == LED_COUNT, "adjlist size should match LED_COUNT");
+  periodics[4] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
+    return new BlinkFiveTriangles(pentaState.color(), 1000);
+  }, [] (PatternRunner &runner) { 
+    return ease8InOutCubic(sawtoothEvery(59*1000, 0, 320*pentaState.colorIndex, 1000));
+  }, 1, 0xFF);
+
+  storage.log();
+  PentaState storedState = storage.getValue<PentaState>();
+  loglf("Reading stored state... ");
+  storedState.log();
+  if (storedState.automaticModes == 0xFF) {
+    // fresh state
+    logf("Fresh penta state");
+    for (int i = 0 ; i < FIVE; ++i) {
+      if (periodics[i]) {
+        periodics[i]->paused = true;
+      }
+    }
+  } else {
+    // had stored state
+    logf("initializing from stored state..");
+    pentaState = storedState;
+    indexedRunner->runPatternAtIndex(pentaState.arrowIndex);
+    
+    for (int i = 0 ; i < FIVE; ++i) {
+      if (periodics[i]) {
+        periodics[i]->paused = 0 == (pentaState.automaticModes & (1<<i));
+      }
+    }
+  }
+
 
   gpio_init(LED_LINE_0_POWER);
   gpio_set_dir(LED_LINE_0_POWER, true);
 
   fc.loop();
-
-
-  // FFT
-
 
   setupDoneTime = millis();
   logf("setup done");
@@ -326,10 +444,7 @@ void loop() {
   } else {
     gpio_put(LED_DATA, false);
   }
-
-  // FIXME: turns out FastLED supports setMaxRefreshRate and countFPS
-  // test this
-  // FastLED.setMaxRefreshRate(240);
+  
   fc.loop();
   fc.clampToFramerate(240);
 }
