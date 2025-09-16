@@ -20,15 +20,38 @@ extern char *__brkval;
 #include <Arduino.h>
 #include <SPI.h>
 
+#if HARDWARE_VERSION >= 2
+
+#define LED_DATA 6
+#define LED_LINE_0_POWER 22
+
+#define USBMUX_SELECT 23
+#define UART0_TX 16
+#define UART0_RX 17
+
+#define UART1_TX 24
+#define UART1_RX 25
+
+#define PIN_PDM_DIN 20
+#define PIN_PDM_CLK 18
+
+#define UNCONNECTED_PIN_1 27
+#define UNCONNECTED_PIN_2 28
+
+#elif HARDWARE_VERSION == 1
+
 #define LED_DATA 26
 #define LED_LINE_0_POWER 27
 
 #define PIN_PDM_DIN 6
 #define PIN_PDM_CLK 28
-#include "audio.h"
 
 #define UNCONNECTED_PIN_1 7
 #define UNCONNECTED_PIN_2 7
+
+#endif
+
+#include "audio.h"
 
 #define FASTLED_USE_PROGMEM 1
 #define FASTLED_USE_GLOBAL_BRIGHTNESS 1
@@ -59,6 +82,13 @@ FrameCounter fc;
 static bool serialTimeout = false;
 static unsigned long setupDoneTime;
 static bool powerOn = true;
+
+// map from touch button wiring order to logical button index
+#if HARDWARE_VERSION >= 2
+int touchIndexMap[FIVE] = {0,2,1,4,3};
+#else
+int touchIndexMap[FIVE] = {0,1,2,3,4};
+#endif
 
 #define TOUCH_PIO pio0
 #define TOUCH_PIN 0 // GPIO number for the first touch button
@@ -313,12 +343,14 @@ void setup() {
 
   TouchButton *tbs[FIVE];
   for (int i = 0; i < FIVE; ++i) {
+    int arrowIndex = touchIndexMap[i];
+    logf("pressed touch button %i for arrow index %i", i, arrowIndex);
     tbs[i] = new TouchButton(i);
-    tbs[i]->onSinglePress([i] {
-      chooseMode(i);
+    tbs[i]->onSinglePress([arrowIndex] {
+      chooseMode(arrowIndex);
     });
-    tbs[i]->onLongPress([i] {
-      chooseAutomode(i);
+    tbs[i]->onLongPress([arrowIndex] {
+      chooseAutomode(arrowIndex);
     });
     controls.addControl(tbs[i]);
   }
