@@ -42,6 +42,7 @@ extern char *__brkval;
 
 #define LED_DATA 26
 #define LED_LINE_0_POWER 27
+#define USE_PIXEL_POWER_SWITCH false
 
 #define PIN_PDM_DIN 6
 #define PIN_PDM_CLK 28
@@ -53,6 +54,7 @@ extern char *__brkval;
 
 #include "audio.h"
 
+#undef FASTLED_USE_PROGMEM
 #define FASTLED_USE_PROGMEM 1
 #define FASTLED_USE_GLOBAL_BRIGHTNESS 1
 // #define FASTLED_ALLOW_INTERRUPTS 0
@@ -459,19 +461,27 @@ void loop() {
   patternManager.loop();
   controls.update();
 
-  static bool line0power = false;
-  bool line0poweron = (bool)ctx.leds;
-  if (line0power != line0poweron) {
-    if (line0power) {
-      // hack: one last show to clear and last pixels before turning power off (v1 penta broken mosfet)
-      FastLED.show();
-      FastLED.delay(1);
-    }
-    line0power = line0poweron;
-    gpio_put(LED_LINE_0_POWER, line0poweron);
+  bool pixelsNeedPower = true;
+#if USE_PIXEL_POWER_SWITCH
+  // FIXME: turning off the pixels results in a single pixel picking up stray current and displaying a dim green
+  // I think the mosfet is wired very wrong again
+  static bool pixelsHavePower = false;
+  static unsigned long lastPixelsNeedPower = 0;
+  pixelsNeedPower = ctx.leds;
+  if (pixelsNeedPower) {
+    lastPixelsNeedPower = millis();
   }
+  if (pixelsNeedPower != pixelsHavePower 
+    && (pixelsNeedPower || millis() - lastPixelsNeedPower > 300)) { // don't turn off panel for very brief periods
+    logdf("Turn %s pixels", pixelsNeedPower?"on":"off");
+    pixelsHavePower = pixelsNeedPower;
+    digitalWrite(LED_LINE_0_POWER, pixelsNeedPower);
+  }
+#else
+  digitalWrite(LED_LINE_0_POWER, true);
+#endif
   
-  if (line0poweron) {
+  if (pixelsNeedPower) {
     FastLED.show();
   } else {
     gpio_put(LED_DATA, false);
