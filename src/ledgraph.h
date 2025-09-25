@@ -48,6 +48,8 @@ const std::vector<PixelIndex> pentaTriangles[] = {
 const std::vector<PixelIndex> kPentaCenterLeds = {15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34};
 #define TRIANGLE_POINTS 103,81,92,114,70 // this order matches the touch pad numbering
 const std::vector<PixelIndex> kTrianglePointLeds = {TRIANGLE_POINTS};
+const std::vector<PixelIndex> kTriangleButtLeds = {19,27,23,15,31};
+
 #define PENTA_POINTS 19,15,31,27,23
 const std::vector<PixelIndex> kPentaPointLeds = {PENTA_POINTS};
 const std::vector<PixelIndex> kStarwiseLeds = {0,1,2,3,4,19,18,17,16,15,35,36,37,38,39,92,

@@ -445,6 +445,47 @@ public:
   }
 };
 
+class ArrowBits : public Pattern, PaletteRotation<CRGBPalette256> {
+  Particles particles;
+  uint8_t arrowIndex;
+    std::vector<PixelIndex> spawnPixels;
+    bool direction = true;
+public:
+  ArrowBits(int arrowIndex) : arrowIndex(arrowIndex), particles(ledgraph, ctx, FIVE*FIVE, 50, 0, {}) {
+    spawnPixels.push_back(kTriangleButtLeds[arrowIndex]);
+    particles.spawnPixels = &spawnPixels;
+    particles.allowedPixels = &kPentaArrows[arrowIndex];
+    particles.maxSpawnPerSecond = FIVE+FIVE;
+    particles.preventReverseFlow = true;
+    minBrightness = FIVE;
+    particles.handleNewParticle = [this](Particle &particle) {
+      // alternate directions rather than random
+      particle.directions = {direction?EdgeType::starwise:EdgeType::counterstarwise};
+      direction = !direction;
+    };
+  }
+
+  void update() {
+    for (int i = particles.particles.size() -1; i >= 0; --i) {
+      Particle &p = particles.particles[i];
+      p.color = getShiftingPaletteColor(0xFF * i / particles.particles.size());
+      if (p.px == kTrianglePointLeds[arrowIndex]) {
+        particles.removeParticle(i);
+      }
+    }
+    particles.update();
+    if (particles.particles.size() == 0) {
+      stop();
+    }
+  }
+  void stopWhenDone() {
+    particles.maxSpawnPopulation = 0;
+  }
+  const char *description() {
+    return "ArrowBits";
+  }
+};
+
 /* ------------------------------------------------------------------------------- */
 
 class TestParticles : public Pattern, PaletteRotation<CRGBPalette256> {

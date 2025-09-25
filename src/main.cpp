@@ -20,6 +20,8 @@ extern char *__brkval;
 #include <Arduino.h>
 #include <SPI.h>
 
+#define USE_AUTOMODES false
+
 #if HARDWARE_VERSION >= 2
 
 #define LED_DATA 6
@@ -330,6 +332,8 @@ void chooseAutomode(int mode) {
   ctx.leds.fill_solid(CRGB::Black);
 }
 
+ArrowBits *allArrowBits[FIVE] = {0};
+
 void setup() {
   init_serial();
 
@@ -352,7 +356,26 @@ void setup() {
       chooseMode(arrowIndex);
     });
     tbs[i]->onLongPress([arrowIndex] {
+#if USE_AUTOMODES
       chooseAutomode(arrowIndex);
+#else
+      if (allArrowBits[arrowIndex]) {
+        allArrowBits[arrowIndex]->stopWhenDone();
+        allArrowBits[arrowIndex] = NULL;
+      } else {
+        // start bits
+        std::shared_ptr<PatternRunner> runner = patternManager.runOneShotPattern([arrowIndex] (PatternRunner &runner) {
+          ArrowBits *arrowBits = new ArrowBits(arrowIndex);
+          assert(!allArrowBits[arrowIndex],"arrow bits should be null");
+          if (allArrowBits[arrowIndex]){
+            allArrowBits[arrowIndex]->stop();        
+            allArrowBits[arrowIndex] = NULL;
+          }
+          allArrowBits[arrowIndex] = arrowBits;
+          return arrowBits;
+        }, 2, 0xFF);
+      }
+#endif
     });
     controls.addControl(tbs[i]);
   }
@@ -375,6 +398,7 @@ void setup() {
 
   indexedRunner = patternManager.setupIndexedRunner(0);
 
+#if USE_AUTOMODES
   periodics[0] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kCircleLedsInOrder, pentaState.color());
   }, [] (PatternRunner &runner) { 
@@ -407,6 +431,7 @@ void setup() {
   }, [] (PatternRunner &runner) { 
     return ease8InOutCubic(sawtoothEvery(59*1000, 0, 320*pentaState.colorIndex, 1000));
   }, 1, 0xFF);
+#endif
 
   storage.log();
   PentaState storedState = storage.getValue<PentaState>();
