@@ -266,9 +266,18 @@ void findArrows() {
 IndexedPatternRunner *indexedRunner = NULL;
 ConditionalPatternRunner *periodics[5] = {0};
 
+ArrowBits *allArrowBits[FIVE] = {0};
+
 unsigned long lastModeChoose = 0;
 void chooseMode(int mode) {
   logf("Choose mode %i", mode);
+  for (int i = 0; i < FIVE; ++i) {
+    if (allArrowBits[i]) {
+      allArrowBits[i]->stop();
+      allArrowBits[i] = NULL;
+    }
+  }
+
   if (millis() - lastModeChoose < 800 && pentaState.arrowIndex == mode) {
     pentaState.colorIndex++;
   }
@@ -331,8 +340,6 @@ void chooseAutomode(int mode) {
   });
   ctx.leds.fill_solid(CRGB::Black);
 }
-
-ArrowBits *allArrowBits[FIVE] = {0};
 
 void setup() {
   init_serial();
