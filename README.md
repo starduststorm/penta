@@ -27,6 +27,12 @@ The project is built using [PlatformIO] in Visual Studio Code.
 
 Build the v2 environment in the [PlatformIO] project, which corresponds to the MakerFaire2025 hardware.
 
+You will likely need to run
+```
+git submodule update --init
+```
+in the source after ```git clone``` in order to fetch the submodule for building.
+
 ### Libraries & Dependencies
 PlatformIO should fetch the apprpriate version of each dependency on first build.
 
