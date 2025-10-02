@@ -1,4 +1,4 @@
-# motionhexa
+# penta
 
 PCB designs and code for a Five-pointed star circumscribed within a circle of 55 pixels, for a total of 5³=125 pixels.
 
