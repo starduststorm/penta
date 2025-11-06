@@ -428,7 +428,7 @@
 		(layers "F.Cu")
 		(uuid "68b0a9e7-232e-4f74-b95b-821459bd2396")
 	)
-	(pad "3_1" smd custom
+	(pad "3" smd custom
 		(at 0 0.0475)
 		(size 0.25 0.25)
 		(layers "F.Cu")
@@ -458,7 +458,7 @@
 		)
 		(uuid "064595c7-60b2-47ca-8656-c811c63aa578")
 	)
-	(pad "3_2" smd custom
+	(pad "3" smd custom
 		(at 0 1.3725)
 		(size 0.25 0.25)
 		(layers "F.Cu")
