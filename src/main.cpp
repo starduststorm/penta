@@ -44,7 +44,6 @@ extern char *__brkval;
 
 #define LED_DATA 26
 #define LED_LINE_0_POWER 27
-#define USE_PIXEL_POWER_SWITCH false
 
 #define PIN_PDM_DIN 6
 #define PIN_PDM_CLK 28
@@ -494,9 +493,6 @@ void loop() {
   controls.update();
 
   bool pixelsNeedPower = true;
-#if USE_PIXEL_POWER_SWITCH
-  // FIXME: turning off the pixels results in a single pixel picking up stray current and displaying a dim green
-  // I think the mosfet is wired very wrong again
   static bool pixelsHavePower = false;
   static unsigned long lastPixelsNeedPower = 0;
   pixelsNeedPower = ctx.leds;
@@ -504,19 +500,25 @@ void loop() {
     lastPixelsNeedPower = millis();
   }
   if (pixelsNeedPower != pixelsHavePower 
-    && (pixelsNeedPower || millis() - lastPixelsNeedPower > 300)) { // don't turn off panel for very brief periods
-    logdf("Turn %s pixels", pixelsNeedPower?"on":"off");
-    pixelsHavePower = pixelsNeedPower;
+    && (pixelsNeedPower || millis() - lastPixelsNeedPower > 500)) { // don't turn off panel for very brief periods
+    logf("Turn %s pixels", pixelsNeedPower?"on":"off");
+
     digitalWrite(LED_LINE_0_POWER, pixelsNeedPower);
+    pixelsHavePower = pixelsNeedPower;
+
+    if (pixelsNeedPower) {
+      // reset the pin after using it for gpio (assume fastled on pio0)
+      gpio_set_function(LED_DATA, GPIO_FUNC_PIO0);
+    } else {
+      // we low-side switch, so when the gnd is disconnected, a small amount of curent is still flowing thru pixel 0 data line, which is driven low from drawing #000000
+      assert(gpio_get_function(LED_DATA) == GPIO_FUNC_PIO0, "LED_DATA not PIO?");
+      pinMode(LED_DATA, OUTPUT);
+      gpio_put(LED_DATA, true);
+    }
   }
-#else
-  digitalWrite(LED_LINE_0_POWER, true);
-#endif
-  
-  if (pixelsNeedPower) {
+
+  if (pixelsHavePower) {
     FastLED.show();
-  } else {
-    gpio_put(LED_DATA, false);
   }
   
   fc.loop();
