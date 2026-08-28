@@ -53,6 +53,21 @@ extern char *__brkval;
 
 #endif
 
+#include <pico/unique_id.h>
+extern "C" bool tud_mounted(void); // TinyUSB: has a USB host configured us?
+#include "piouart.h"
+// Main USB port muxed to UART1 (Serial2) pins, secondary USB port wired to UART0 (Serial1).
+// We'll use hardware UART when the pins line up, and a PIO UART when tx/rx are swapped.
+//
+// PIO placement is pinned (see piouart.h): both swapped RX on pio0 (sharing the
+// 9-word rx program + PIO0_IRQ_0), both swapped TX on pio1, with touch on pio1
+// (IRQ1), FastLED on pio0, leaving PDM a guaranteed slot. SMs are claimed
+// permanently via reserve() in setup(); orientation changes are funcsel swaps.
+//   pio0: SM0 FastLED, SM1 port0 RX, SM2 port1 RX, SM3 PDM(auto)
+//   pio1: SM0 ccount,  SM1 touch,    SM2 port0 TX, SM3 port1 TX
+PioUart port0Swapped(/*tx*/ pio1, UART0_RX /*17*/, /*rx*/ pio0, UART0_TX /*16*/, 57600);
+PioUart port1Swapped(/*tx*/ pio1, UART1_RX /*25*/, /*rx*/ pio0, UART1_TX /*24*/, 57600);
+
 #include "audio.h"
 
 #undef FASTLED_USE_PROGMEM
@@ -66,6 +81,24 @@ extern char *__brkval;
 #include <drawing.h>
 #include <controls.h>
 
+#include "uartlink.h" // needs logf() from util.h
+// Two independent auto-negotiating links, one per port.
+SerialLink link0("link0", Serial1, port0Swapped, UART0_TX, UART0_RX, 57600);
+SerialLink link1("link1", Serial2, port1Swapped, UART1_TX, UART1_RX, 57600);
+
+static void peerBlink();
+
+static void onLinkData(const char *name, const uint8_t *d, uint8_t n) {
+  logf("[%s] rx %u bytes: %.*s", name, n, n, (const char *)d);
+  
+  // Demo traffic: log DATA frames from each port; a "blink" payload blinks us.
+  if (n == 5 && memcmp(d, "blink", 5) == 0) {
+    peerBlink();
+  }
+}
+static void onLink0Data(const uint8_t *d, uint8_t n) { onLinkData("link0", d, n); }
+static void onLink1Data(const uint8_t *d, uint8_t n) { onLinkData("link1", d, n); }
+
 #include "ledgraph.h"
 
 #include <patterning.h>
@@ -78,6 +111,21 @@ PersistentStorage storage(PentaState::dataSize());
 
 DrawingContext ctx;
 PatternManager patternManager(ctx);
+
+static void peerBlink() {
+  static constexpr unsigned long kFlashPeriodMs = 250;
+  static constexpr int kFlashes = 3;
+  patternManager.runOneShotDrawing([](DrawingContext &c, unsigned long elapsed) {
+    if (elapsed >= kFlashes * kFlashPeriodMs) return false;
+    c.leds.fill_solid(CRGB::Black);
+    if ((elapsed % kFlashPeriodMs) < kFlashPeriodMs / 2) {
+      for (PixelIndex px : kCircleLeds) {
+        c.leds[px] = CRGB::Cyan;
+      }
+    }
+    return true;
+  }, patternManager.highestPriority());
+}
 
 HardwareControls controls;
 FrameCounter fc;
@@ -93,19 +141,20 @@ int touchIndexMap[FIVE] = {0,2,1,4,3};
 int touchIndexMap[FIVE] = {0,1,2,3,4};
 #endif
 
-#define TOUCH_PIO pio0
+#define TOUCH_PIO pio1
 #define TOUCH_PIN 0 // GPIO number for the first touch button
 #define TOUCH_COUNT FIVE // number of sequential touch buttons
 
 volatile uint touch_state = 0;
 volatile uint touch_state_last =0;
 volatile bool touch_change_flg = 0;
+volatile int touch_sm = 0; // state machine claimed by touch_setup
 
 // https://github.com/forshee9283/pio-touch
 // with modifications
 void touch_isr_handler(void) {
-    if (!pio_sm_is_rx_fifo_empty(TOUCH_PIO, 0)) {
-        touch_state = (touch_state & 0xffffffe0)|(pio_sm_get(TOUCH_PIO,0));
+    if (!pio_sm_is_rx_fifo_empty(TOUCH_PIO, touch_sm)) {
+        touch_state = (touch_state & 0xffffffe0)|(pio_sm_get(TOUCH_PIO, touch_sm));
     }
     if (touch_state!=touch_state_last) {
         touch_change_flg = 1;
@@ -122,17 +171,60 @@ int touch_setup(PIO pio_touch, int start_pin, int pin_count, const float clk_div
     uint offset_touch = pio_add_program(TOUCH_PIO, &touch_program);
     if (pin_count > 0) {
         sm = pio_claim_unused_sm(pio_touch,true); // Panic if unavailible
-        pio_set_irq0_source_enabled(pio_touch, (enum pio_interrupt_source)sm, true); // state machine number happens to be equal to rx fifo not empty bit for that state machine
+        touch_sm = sm; // remember for the ISR
+        // Route this SM's "RX FIFO not empty" to the PIO's *IRQ1* line, not IRQ0.
+        // The swapped-orientation PioUart RX owns the IRQ0 line; IRQ1 is a
+        // separate NVIC vector, so touch coexists with it even on the same PIO.
+        pio_set_irq1_source_enabled(pio_touch, (enum pio_interrupt_source)sm, true); // sm number == rx-fifo-not-empty source index
         touch_init(pio_touch, sm, offset_touch, start_pin, pin_count, clk_div);
         pio_sm_set_enabled(pio_touch, sm, true);
     }
-    irq_set_exclusive_handler(PIO0_IRQ_0,touch_isr_handler);
-    //irq_add_shared_handler(PIO0_IRQ_0, touch_isr_handler,PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
-    irq_set_enabled(PIO0_IRQ_0, true);
+    // Attach to the IRQ1 line of whichever PIO touch actually lives on.
+    const uint touch_irq = (pio_touch == pio0) ? PIO0_IRQ_1 : PIO1_IRQ_1;
+    irq_set_exclusive_handler(touch_irq, touch_isr_handler);
+    irq_set_enabled(touch_irq, true);
     return 0;
 }
 
 //
+
+// How many instruction words a PIO still has free. pio_can_add_program only
+// checks space for a relocatable program, so probe with descending sizes.
+static int pioFreeInstructionWords(PIO pio) {
+  static const uint16_t dummyInsns[32] = {0}; // never executed
+  for (int len = 32; len > 0; --len) {
+    pio_program_t p = { .instructions = dummyInsns, .length = (uint8_t)len, .origin = -1 };
+    if (pio_can_add_program(pio, &p)) {
+      return len;
+    }
+  }
+  return 0;
+}
+
+// Fail-loudly snapshot of the shared PIO resources, called once everything in
+// setup() has claimed its slots. 2 PIOs x 4 SMs and 32 instruction words per
+// PIO are the whole budget; logging who holds what makes a setup() reshuffle
+// show up as a diff here instead of a mystery failure in whichever subsystem
+// lost its slot. Expected steady-state map (see piouart.h):
+//   pio0: SM0 FastLED, SM1 p0 rx, SM2 p1 rx, SM3 PDM (auto-claimed)
+//   pio1: SM0 ccount,  SM1 touch, SM2 p0 tx, SM3 p1 tx
+void verifyPioLayout() {
+  for (int p = 0; p < 2; ++p) {
+    PIO pio = p == 0 ? pio0 : pio1;
+    char claimed[5];
+    for (int sm = 0; sm < 4; ++sm) {
+      claimed[sm] = pio_sm_is_claimed(pio, sm) ? ('0' + sm) : '.';
+    }
+    claimed[4] = 0;
+    logf("[pio%d] claimed SMs [%s], %d/32 instruction words free",
+         p, claimed, pioFreeInstructionWords(pio));
+  }
+  logf("[pio] uart SMs: p0 rx=%d tx=%d, p1 rx=%d tx=%d; touch sm=%d",
+       port0Swapped.rxSM(), port0Swapped.txSM(),
+       port1Swapped.rxSM(), port1Swapped.txSM(), (int)touch_sm);
+  assert(port0Swapped.reserved(), "port0 swapped uart failed to reserve PIO resources");
+  assert(port1Swapped.reserved(), "port1 swapped uart failed to reserve PIO resources");
+}
 
 void init_serial() {
   Serial.begin(57600);
@@ -166,25 +258,19 @@ void serialTimeoutIndicator() {
 void startupWelcome() {
   int welcomeDuration = 555;
 
-  ctx.leds.fill_solid(CRGB::Black);
-  gpio_put(LED_LINE_0_POWER, true);
-  FastLED.setBrightness(10);
-
   CRGB color = CRGB::Purple; // FIXME: get from saved
   uint8_t offset = 16 * random(FIVE); // FIXME: get from saved
 
-  DrawModal(120, welcomeDuration, [welcomeDuration, color, offset](unsigned long elapsed) {
-    ctx.leds.fadeToBlackBy(5);
-    uint16_t progress = ease16InOutQuad(0xFFFF * elapsed/welcomeDuration);
-    PixelIndex px = kStarwiseLeds[(kStarwiseLeds.size() * progress / 0xFFFF + offset) % kStarwiseLeds.size()];
-    ctx.leds[px] = color;
-  });
-  while (ctx.leds) {
-    ctx.leds.fadeToBlackBy(5);
-    FastLED.show();
-  }
-  ctx.leds.fill_solid(CRGB::Black);
-  FastLED.show();
+  patternManager.runOneShotDrawing([welcomeDuration, color, offset](DrawingContext &c, unsigned long elapsed) {
+    c.leds.fadeToBlackBy(5);
+    if (elapsed < (unsigned long)welcomeDuration) {
+      uint16_t progress = ease16InOutQuad(0xFFFF * elapsed/welcomeDuration);
+      PixelIndex px = kStarwiseLeds[(kStarwiseLeds.size() * progress / 0xFFFF + offset) % kStarwiseLeds.size()];
+      c.leds[px] = color;
+      return true;
+    }
+    return (bool)c.leds; // after the sweep, keep fading until fully black
+  }, patternManager.highestPriority());
 }
 
 // SETUP ///////////////////////////////////////////////
@@ -308,11 +394,12 @@ void chooseAutomode(int mode) {
   storage.setValue(pentaState);
 
   int duration = 1200;
-  DrawModal(240, duration, [duration, mode, turnAutomodeOn](unsigned long elapsed) {
+  patternManager.runOneShotDrawing([duration, mode, turnAutomodeOn](DrawingContext &ctx, unsigned long elapsed) {
+    if (elapsed >= (unsigned long)duration) return false;
     ctx.leds.fadeToBlackBy(20);
-    
+
     uint8_t brightness = elapsed < duration/5 ? (0xFF * elapsed / (duration/5)) : (elapsed > (duration - duration/5) ? 0xFF - 0xFF * (elapsed-(duration - duration/5)) / (duration/5) : 0xFF);
-    
+
     int theend = max(0, min(arrows[mode].size(), (int)arrows[mode].size()-arrows[mode].size()*elapsed/duration*2));
     for (int i = arrows[mode].size()-1; i >= theend; --i) {
       if (turnAutomodeOn) {
@@ -336,21 +423,47 @@ void chooseAutomode(int mode) {
         }
       }
     }
-  });
-  ctx.leds.fill_solid(CRGB::Black);
+    return true;
+  }, patternManager.highestPriority());
 }
 
 void setup() {
   init_serial();
 
+  // Pin the hardware UARTs to our port pins (normal orientation); the links
+  // begin() them once and swap pin funcsels from there.
+  Serial1.setTX(UART0_TX); Serial1.setRX(UART0_RX);
+  Serial2.setTX(UART1_TX); Serial2.setRX(UART1_RX);
+
+  // Seed RNG before starting the links: their randomized search dwell relies on
+  // random() to keep two identical boards from flipping orientation in lockstep.
   randomSeed(lsb_noise(UNCONNECTED_PIN_1, 8 * sizeof(uint32_t)));
   random16_add_entropy(lsb_noise(UNCONNECTED_PIN_2, 8 * sizeof(uint16_t)));
+
+  pico_unique_board_id_t uid;
+  pico_get_unique_board_id(&uid);
+  uint32_t deviceId = (uint32_t)uid.id[0] | ((uint32_t)uid.id[1] << 8) |
+                      ((uint32_t)uid.id[2] << 16) | ((uint32_t)uid.id[3] << 24);
+
+#if HARDWARE_VERSION >= 2
+  // Route the shared USB-C port through the mux: LOW = RP2040 USB, HIGH = UART1
+  // Decided once at boot: a computer will have enumerated us by now, so look for a neighbor if not.
+  bool usbHostPresent = tud_mounted();
+  gpio_init(USBMUX_SELECT);
+  gpio_put(USBMUX_SELECT, !usbHostPresent);
+  gpio_set_dir(USBMUX_SELECT, GPIO_OUT);
+  logf("usb mux: port routed to %s (usb host %s)",
+       usbHostPresent ? "USB" : "UART1/link", usbHostPresent ? "present" : "absent");
+#endif
 
   DigitalAudioProcessing::create<AudioInputPDM>(PIN_PDM_DIN, PIN_PDM_CLK);
   FFTProcessing::create(FIVE+FIVE+FIVE);
 
-  // HACK: Touch Setup needs to go before FastLED possibly because the touch pio code doesn't work when it's running off of state machine 0?
   static const float pio_clk_div = 40; // This should be tuned for the size of the buttons
+  // Claim order matters -- PIO layout at boot: the arduino-pico core's
+  // cycle-counter (ccount.pio) permanently holds pio1 SM0, so touch lands on
+  // pio1 SM1, FastLED on pio0 SM0, and PioUart::reserve() (below, after
+  // addLeds) claims the rest. See piouart.h and verifyPioLayout().
   touch_setup(TOUCH_PIO, TOUCH_PIN, TOUCH_COUNT, pio_clk_div);
 
   TouchButton *tbs[FIVE];
@@ -385,13 +498,28 @@ void setup() {
     });
     controls.addControl(tbs[i]);
   }
-  
+
   initLEDGraph();
   assert(ledgraph.adjList.size() == LED_COUNT, "adjlist size should match LED_COUNT");
   findArrows();
 
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
-  
+
+  // Pin the swapped-UART PIO state machines now that touch (pio1 SM1) and
+  // FastLED (pio0 SM0) have claimed theirs. Holds the claims for the whole
+  // session so PDM/FastLED/touch placement stays deterministic.
+  port0Swapped.reserve();
+  port1Swapped.reserve();
+
+  // The links can start now that their PIO halves are reserved. Both engines
+  // (hw UART + PIO) run for the life of the link; negotiation only swaps pin
+  // funcsels between them.
+  link0.onData(onLink0Data);
+  link1.onData(onLink1Data);
+  link0.begin(deviceId);
+  link1.begin(deviceId);
+
+  verifyPioLayout();
   // patternManager.setTestRunner<Wanderer>();
 
   // patternManager.registerPattern<StarwisePattern>();
@@ -488,6 +616,22 @@ void loop() {
     firstLoop = false;
   }  
 
+#if LINK_DIAG
+  link0.diagLoop(Serial); // wire-test commands + periodic state dumps (port 0)
+#endif
+
+  // Negotiate/maintain both inter-board links (orientation detection + framing).
+  link0.update();
+  link1.update();
+
+  // Demo traffic: once linked, send a heartbeat on each port every second.
+  static unsigned long lastHeartbeat = 0;
+  if (millis() - lastHeartbeat >= 1000) {
+    lastHeartbeat = millis();
+    if (link0.isLinked()) link0.send("hello-p0");
+    if (link1.isLinked()) link1.send("hello-p1");
+  }
+
   FastLED.setBrightness(30);
   patternManager.loop();
   controls.update();
@@ -516,6 +660,7 @@ void loop() {
       gpio_put(LED_DATA, true);
     }
   }
+
 
   if (pixelsHavePower) {
     FastLED.show();
