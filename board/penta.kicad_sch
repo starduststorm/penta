@@ -11808,7 +11808,7 @@
 				)
 			)
 		)
-		(property "Value" "5.11K"
+		(property "Value" "5.1K"
 			(at 46.99 32.512 90)
 			(effects
 				(font
@@ -11843,7 +11843,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-075K11L"
+		(property "Designation" "0402WGF5101TCE"
 			(at 46.99 30.48 0)
 			(effects
 				(font
@@ -11852,7 +11852,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C274895"
+		(property "LCSC" "C25905"
 			(at 46.99 30.48 90)
 			(effects
 				(font
@@ -12035,7 +12035,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
 			(at 266.7 97.79 0)
 			(effects
 				(font
@@ -12234,7 +12234,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-071KL"
+		(property "Designation" "0402WGF1001TCE"
 			(at 147.32 100.33 0)
 			(effects
 				(font
@@ -12243,7 +12243,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C106235"
+		(property "LCSC" "C11702"
 			(at 147.32 100.33 90)
 			(effects
 				(font
@@ -12640,7 +12640,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 250.19 25.4 0)
 			(effects
 				(font
@@ -12649,7 +12649,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 250.19 25.4 0)
 			(effects
 				(font
@@ -14219,6 +14219,24 @@
 				(hide yes)
 			)
 		)
+		(property "Designation" "CL05A106MQ5NUNC"
+			(at 342.9 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C15525"
+			(at 342.9 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "d487b88d-f65d-4dd7-9e7d-02d186483028")
 		)
@@ -14713,7 +14731,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 240.03 25.4 0)
 			(effects
 				(font
@@ -14722,7 +14740,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 240.03 25.4 0)
 			(effects
 				(font
@@ -15165,7 +15183,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 99.06 87.63 0)
 			(effects
 				(font
@@ -15174,7 +15192,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 99.06 87.63 0)
 			(effects
 				(font
@@ -15842,7 +15860,7 @@
 				)
 			)
 		)
-		(property "Value" "5.11K"
+		(property "Value" "5.1K"
 			(at 46.99 26.035 90)
 			(effects
 				(font
@@ -15877,7 +15895,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-075K11L"
+		(property "Designation" "0402WGF5101TCE"
 			(at 46.99 27.94 0)
 			(effects
 				(font
@@ -15886,7 +15904,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C274895"
+		(property "LCSC" "C25905"
 			(at 46.99 27.94 90)
 			(effects
 				(font
@@ -17392,7 +17410,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CL05A105KP5NNNC"
+		(property "Designation" "CL05A105KA5NQNC"
 			(at 190.5 35.56 0)
 			(effects
 				(font
@@ -17401,7 +17419,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C14445"
+		(property "LCSC" "C52923"
 			(at 190.5 35.56 90)
 			(effects
 				(font
@@ -17477,7 +17495,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402JR-071ML"
+		(property "Designation" "0402WGF1004TCE"
 			(at 24.13 88.9 0)
 			(effects
 				(font
@@ -17486,7 +17504,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C93949"
+		(property "LCSC" "C26083"
 			(at 24.13 88.9 90)
 			(effects
 				(font
@@ -18702,7 +18720,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 153.67 25.4 0)
 			(effects
 				(font
@@ -18711,7 +18729,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 153.67 25.4 0)
 			(effects
 				(font
@@ -18790,6 +18808,24 @@
 				(hide yes)
 			)
 		)
+		(property "Designation" "CL05A106MQ5NUNC"
+			(at 369.57 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C15525"
+			(at 369.57 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "c45b15d7-1e14-44c8-af3f-9112b5d8a6cc")
 		)
@@ -18860,7 +18896,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 209.55 33.02 0)
 			(effects
 				(font
@@ -18869,7 +18905,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 209.55 33.02 0)
 			(effects
 				(font
@@ -19582,6 +19618,24 @@
 				(hide yes)
 			)
 		)
+		(property "Designation" "CL05A106MQ5NUNC"
+			(at 332.74 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C15525"
+			(at 332.74 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "490facfc-aada-464d-af44-06345bb2c778")
 		)
@@ -19744,7 +19798,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CL05A105KP5NNNC"
+		(property "Designation" "CL05A105KA5NQNC"
 			(at 167.64 35.56 0)
 			(effects
 				(font
@@ -19753,7 +19807,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C14445"
+		(property "LCSC" "C52923"
 			(at 167.64 35.56 90)
 			(effects
 				(font
@@ -19924,7 +19978,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 233.68 139.7 0)
 			(effects
 				(font
@@ -19933,7 +19987,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 233.68 139.7 0)
 			(effects
 				(font
@@ -20069,6 +20123,24 @@
 			)
 		)
 		(property "Description" ""
+			(at 360.68 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" "CL05A106MQ5NUNC"
+			(at 360.68 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C15525"
 			(at 360.68 5.08 0)
 			(effects
 				(font
@@ -20772,6 +20844,24 @@
 			)
 		)
 		(property "Description" ""
+			(at 351.79 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Designation" "CL05A106MQ5NUNC"
+			(at 351.79 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C15525"
 			(at 351.79 5.08 0)
 			(effects
 				(font
@@ -22328,7 +22418,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402JR-071ML"
+		(property "Designation" "0402WGF1004TCE"
 			(at 25.4 189.23 0)
 			(effects
 				(font
@@ -22337,7 +22427,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C93949"
+		(property "LCSC" "C26083"
 			(at 25.4 189.23 90)
 			(effects
 				(font
@@ -22564,7 +22654,7 @@
 				)
 			)
 		)
-		(property "Value" "5.11K"
+		(property "Value" "5.1K"
 			(at 48.26 126.365 90)
 			(effects
 				(font
@@ -22599,7 +22689,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-075K11L"
+		(property "Designation" "0402WGF5101TCE"
 			(at 48.26 128.27 0)
 			(effects
 				(font
@@ -22608,7 +22698,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C274895"
+		(property "LCSC" "C25905"
 			(at 48.26 128.27 90)
 			(effects
 				(font
@@ -23170,7 +23260,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-071KL"
+		(property "Designation" "0402WGF1001TCE"
 			(at 137.16 62.23 0)
 			(effects
 				(font
@@ -23179,7 +23269,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C106235"
+		(property "LCSC" "C11702"
 			(at 137.16 62.23 90)
 			(effects
 				(font
@@ -23806,7 +23896,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 163.83 25.4 0)
 			(effects
 				(font
@@ -23815,7 +23905,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 163.83 25.4 0)
 			(effects
 				(font
@@ -24052,7 +24142,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402FRNPO9BN120"
+		(property "Designation" "0402CG120J500NT"
 			(at 128.27 100.33 0)
 			(effects
 				(font
@@ -24061,7 +24151,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C326662"
+		(property "LCSC" "C1547"
 			(at 128.27 100.33 90)
 			(effects
 				(font
@@ -24962,7 +25052,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 219.71 25.4 0)
 			(effects
 				(font
@@ -24971,7 +25061,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 219.71 25.4 0)
 			(effects
 				(font
@@ -25489,7 +25579,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C14445"
+		(property "LCSC" "C52923"
 			(at 104.14 146.05 0)
 			(effects
 				(font
@@ -25498,7 +25588,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CL05A105KP5NNNC"
+		(property "Designation" "CL05A105KA5NQNC"
 			(at 104.14 146.05 0)
 			(effects
 				(font
@@ -25974,7 +26064,7 @@
 				)
 			)
 		)
-		(property "Value" "5.11K"
+		(property "Value" "5.1K"
 			(at 48.26 132.842 90)
 			(effects
 				(font
@@ -26009,7 +26099,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-075K11L"
+		(property "Designation" "0402WGF5101TCE"
 			(at 48.26 130.81 0)
 			(effects
 				(font
@@ -26018,7 +26108,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C274895"
+		(property "LCSC" "C25905"
 			(at 48.26 130.81 90)
 			(effects
 				(font
@@ -26376,7 +26466,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C14445"
+		(property "LCSC" "C52923"
 			(at 78.74 146.05 0)
 			(effects
 				(font
@@ -26385,7 +26475,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CL05A105KP5NNNC"
+		(property "Designation" "CL05A105KA5NQNC"
 			(at 78.74 146.05 0)
 			(effects
 				(font
@@ -26556,7 +26646,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-0710KL"
+		(property "Designation" "0402WGF1002TCE"
 			(at 52.07 99.06 0)
 			(effects
 				(font
@@ -26565,7 +26655,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60490"
+		(property "LCSC" "C25744"
 			(at 52.07 99.06 90)
 			(effects
 				(font
@@ -26832,7 +26922,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 199.39 25.4 0)
 			(effects
 				(font
@@ -26841,7 +26931,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 199.39 25.4 0)
 			(effects
 				(font
@@ -28327,7 +28417,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "RC0402FR-0710KL"
+		(property "Designation" "0402WGF1002TCE"
 			(at 254 104.14 0)
 			(effects
 				(font
@@ -28336,7 +28426,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60490"
+		(property "LCSC" "C25744"
 			(at 254 104.14 90)
 			(effects
 				(font
@@ -28958,7 +29048,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 199.39 33.02 0)
 			(effects
 				(font
@@ -28967,7 +29057,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 199.39 33.02 0)
 			(effects
 				(font
@@ -29549,7 +29639,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 179.07 154.94 0)
 			(effects
 				(font
@@ -29558,7 +29648,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 179.07 154.94 0)
 			(effects
 				(font
@@ -31511,7 +31601,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402FRNPO9BN120"
+		(property "Designation" "0402CG120J500NT"
 			(at 128.27 90.17 0)
 			(effects
 				(font
@@ -31520,7 +31610,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C326662"
+		(property "LCSC" "C1547"
 			(at 128.27 90.17 90)
 			(effects
 				(font
@@ -31670,7 +31760,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 189.23 25.4 0)
 			(effects
 				(font
@@ -31679,7 +31769,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 189.23 25.4 0)
 			(effects
 				(font
@@ -31917,7 +32007,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 229.87 25.4 0)
 			(effects
 				(font
@@ -31926,7 +32016,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 229.87 25.4 0)
 			(effects
 				(font
@@ -32098,7 +32188,7 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "CC0402KRX7R7BB104"
+		(property "Designation" "CL05B104KO5NNNC"
 			(at 209.55 25.4 0)
 			(effects
 				(font
@@ -32107,7 +32197,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C60474"
+		(property "LCSC" "C1525"
 			(at 209.55 25.4 0)
 			(effects
 				(font
