@@ -1,23 +1,23 @@
 (kicad_sch
-	(version 20231120)
+	(version 20250114)
 	(generator "eeschema")
-	(generator_version "8.0")
+	(generator_version "9.0")
 	(uuid "440f7d2e-5216-4c28-bc49-01163fd737fe")
 	(paper "A4")
 	(lib_symbols
-		(symbol "ded:GT-USB-8016A"
+		(symbol "ded:HYCW675-USBC12-105B"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
 			(property "Reference" "USB"
-				(at 0 16.51 0)
+				(at 0 13.97 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
 				)
 			)
-			(property "Value" "GT-USB-8016A"
+			(property "Value" "HYCW675-USBC12-105B"
 				(at 0 -13.97 0)
 				(effects
 					(font
@@ -25,7 +25,7 @@
 					)
 				)
 			)
-			(property "Footprint" "easyeda2kicad:USB-TYPE-C-SMD_GT-USB-8016A"
+			(property "Footprint" "ded:USB-C-SMD_HYCW675-USBC12-105B"
 				(at 0 -16.51 0)
 				(effects
 					(font
@@ -34,25 +34,7 @@
 					(hide yes)
 				)
 			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "LCSC Part" "C2988371"
+			(property "Datasheet" "https://www.lcsc.com/datasheet/C53436585.pdf"
 				(at 0 -19.05 0)
 				(effects
 					(font
@@ -61,10 +43,46 @@
 					(hide yes)
 				)
 			)
-			(symbol "GT-USB-8016A_0_1"
+			(property "Description" "USB Type-C plug, full-orientation USB 2.0, 0.80 mm PCB"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer" "HOAUC(华宇创)"
+				(at 0 -21.59 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "MPN" "HYCW675-USBC12-105B"
+				(at 0 -24.13 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC Part" "C53436585"
+				(at 0 -26.67 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "HYCW675-USBC12-105B_0_1"
 				(rectangle
-					(start -8.89 13.97)
-					(end 6.35 -11.43)
+					(start -6.35 11.43)
+					(end 11.43 -11.43)
 					(stroke
 						(width 0)
 						(type default)
@@ -74,7 +92,7 @@
 					)
 				)
 				(circle
-					(center -7.62 12.7)
+					(center -5.08 10.16)
 					(radius 0.38)
 					(stroke
 						(width 0)
@@ -85,34 +103,16 @@
 					)
 				)
 				(pin unspecified line
-					(at -12.7 8.89 0)
-					(length 3.81)
-					(name "TX1+"
+					(at -8.89 8.89 0)
+					(length 2.54)
+					(name "GND"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "A2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin unspecified line
-					(at -12.7 6.35 0)
-					(length 3.81)
-					(name "TX1-"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "A3"
+					(number "A12B1"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -121,34 +121,16 @@
 					)
 				)
 				(pin unspecified line
-					(at -12.7 3.81 0)
-					(length 3.81)
-					(name "CC1"
+					(at -8.89 6.35 0)
+					(length 2.54)
+					(name "VBUS"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "A5"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin unspecified line
-					(at -12.7 1.27 0)
-					(length 3.81)
-					(name "D+"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "A6"
+					(number "A9B4"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -157,8 +139,26 @@
 					)
 				)
 				(pin unspecified line
-					(at -12.7 -1.27 0)
-					(length 3.81)
+					(at -8.89 3.81 0)
+					(length 2.54)
+					(name "VCONN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "B5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin unspecified line
+					(at -8.89 1.27 0)
+					(length 2.54)
 					(name "D-"
 						(effects
 							(font
@@ -175,16 +175,16 @@
 					)
 				)
 				(pin unspecified line
-					(at -12.7 -3.81 0)
-					(length 3.81)
-					(name "RX1-"
+					(at -8.89 -1.27 0)
+					(length 2.54)
+					(name "D+"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "B10"
+					(number "A6"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -193,36 +193,16 @@
 					)
 				)
 				(pin unspecified line
-					(at -12.7 -6.35 0)
-					(length 3.81)
-					(name "RX1+"
+					(at -8.89 -3.81 0)
+					(length 2.54)
+					(name "CC1"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "B11"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(symbol "GT-USB-8016A_1_1"
-				(pin power_in line
-					(at -12.7 -8.89 0)
-					(length 3.81)
-					(name "GND"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "A1"
+					(number "A5"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -230,9 +210,9 @@
 						)
 					)
 				)
-				(pin power_in line
-					(at -12.7 11.43 0)
-					(length 3.81)
+				(pin unspecified line
+					(at -8.89 -6.35 0)
+					(length 2.54)
 					(name "VBUS"
 						(effects
 							(font
@@ -240,7 +220,7 @@
 							)
 						)
 					)
-					(number "A9"
+					(number "A4B9"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -249,16 +229,16 @@
 					)
 				)
 				(pin unspecified line
-					(at 10.16 -8.89 180)
-					(length 3.81)
-					(name "Shield"
+					(at -8.89 -8.89 0)
+					(length 2.54)
+					(name "GND"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "S1"
+					(number "A1B12"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -266,88 +246,10 @@
 						)
 					)
 				)
-			)
-		)
-		(symbol "power:GND"
-			(power)
-			(pin_numbers hide)
-			(pin_names
-				(offset 0) hide)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "#PWR"
-				(at 0 -6.35 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Value" "GND"
-				(at 0 -3.81 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_keywords" "global power"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(symbol "GND_0_1"
-				(polyline
-					(pts
-						(xy 0 0) (xy 0 -1.27) (xy 1.27 -1.27) (xy 0 -2.54) (xy -1.27 -1.27) (xy 0 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "GND_1_1"
-				(pin power_in line
-					(at 0 0 270)
-					(length 0)
-					(name "~"
+				(pin unspecified line
+					(at 13.97 8.89 180)
+					(length 2.54)
+					(name "SHELL"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -362,119 +264,17 @@
 						)
 					)
 				)
-			)
-		)
-		(symbol "power:VBUS"
-			(power)
-			(pin_numbers hide)
-			(pin_names
-				(offset 0) hide)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "#PWR"
-				(at 0 -3.81 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Value" "VBUS"
-				(at 0 3.556 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "Power symbol creates a global label with name \"VBUS\""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_keywords" "global power"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(symbol "VBUS_0_1"
-				(polyline
-					(pts
-						(xy -0.762 1.27) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 0) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 2.54) (xy 0.762 1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "VBUS_1_1"
-				(pin power_in line
-					(at 0 0 90)
-					(length 0)
-					(name "~"
+				(pin unspecified line
+					(at 13.97 -8.89 180)
+					(length 2.54)
+					(name "SHELL"
 						(effects
 							(font
 								(size 1.27 1.27)
 							)
 						)
 					)
-					(number "1"
+					(number "2"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -483,327 +283,297 @@
 					)
 				)
 			)
+			(embedded_fonts no)
 		)
 	)
 	(junction
-		(at 90.17 49.53)
+		(at 60.96 69.85)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "162c3636-4d45-480b-83e0-b8dacc1ca93f")
+		(uuid "77dbdf33-0b30-4d93-a6c8-0abad016861f")
 	)
 	(junction
-		(at 90.17 29.21)
+		(at 124.46 69.85)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "a9d6b9c8-9a9b-4cef-80b6-5ad415eced5a")
+		(uuid "aa257307-ef86-4373-935f-f2fc3ae96c95")
+	)
+	(no_connect
+		(at 99.06 57.15)
+		(uuid "4592a960-255d-4eb6-a1a7-cd8e655051d0")
+	)
+	(no_connect
+		(at 86.36 57.15)
+		(uuid "e6e54d8d-aaef-4e59-a8f4-b2c1c2c801c5")
 	)
 	(wire
 		(pts
-			(xy 87.63 41.91) (xy 92.71 41.91)
+			(xy 86.36 67.31) (xy 99.06 67.31)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "00a369ca-fc5a-4ac3-81bb-a1ac03b83b68")
+		(uuid "034c6026-9191-4ef6-a1ad-42107d058d63")
 	)
 	(wire
 		(pts
-			(xy 64.77 49.53) (xy 64.77 55.88)
+			(xy 63.5 52.07) (xy 60.96 52.07)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "0cf22d01-69ce-4faf-8a42-7b95b9b4c885")
+		(uuid "155a2eef-9121-499e-866e-d6284c0a0328")
 	)
 	(wire
 		(pts
-			(xy 87.63 44.45) (xy 92.71 44.45)
+			(xy 86.36 62.23) (xy 99.06 62.23)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "0da66955-30f5-4b11-b1e0-8ae4eba88e11")
+		(uuid "16da4419-2e13-46a9-b7cd-85653bff5c5e")
 	)
 	(wire
 		(pts
-			(xy 87.63 36.83) (xy 92.71 36.83)
+			(xy 86.36 59.69) (xy 99.06 59.69)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "1173ce77-f0ef-4bb2-8fd6-b3af244b1029")
+		(uuid "1d95bf0a-879f-4fdf-b289-15fd3c000a69")
 	)
 	(wire
 		(pts
-			(xy 90.17 25.4) (xy 90.17 29.21)
+			(xy 124.46 78.74) (xy 124.46 69.85)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "15e9f81d-e275-49bb-9bc1-869e0c44c650")
+		(uuid "2042cadf-90ee-448a-86d6-2324c6e57cff")
 	)
 	(wire
 		(pts
-			(xy 115.57 49.53) (xy 115.57 55.88)
+			(xy 60.96 52.07) (xy 60.96 69.85)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "2962de23-26cb-4f50-b615-2e8d9cb6f9c9")
+		(uuid "2c080a4b-07e1-41d0-b1d0-7181c547d031")
 	)
 	(wire
 		(pts
-			(xy 87.63 34.29) (xy 92.71 34.29)
+			(xy 124.46 69.85) (xy 124.46 52.07)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "29a8bfdc-f9ab-406c-b654-f784947d3574")
+		(uuid "345d4be8-e21f-411a-bc86-f8c96995374d")
 	)
 	(wire
 		(pts
-			(xy 90.17 29.21) (xy 92.71 29.21)
+			(xy 63.5 69.85) (xy 60.96 69.85)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "2e11c954-2284-44bd-9ad3-48ce61db9f00")
+		(uuid "432d915d-c26b-4437-8ba8-d193e60965d8")
 	)
 	(wire
 		(pts
-			(xy 87.63 49.53) (xy 90.17 49.53)
+			(xy 86.36 69.85) (xy 99.06 69.85)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "2ff52bef-581b-4bb1-b53f-a016d0100d7c")
+		(uuid "54418b3c-bb9f-4a69-9d04-85af97f226d7")
 	)
 	(wire
 		(pts
-			(xy 87.63 39.37) (xy 92.71 39.37)
+			(xy 60.96 78.74) (xy 124.46 78.74)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "33cb6a60-5634-4118-b6b8-93bd27bcf411")
+		(uuid "55394d6e-c549-450f-97d8-ff113b68022f")
 	)
 	(wire
 		(pts
-			(xy 87.63 29.21) (xy 90.17 29.21)
+			(xy 124.46 69.85) (xy 121.92 69.85)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "4411eee6-75af-4f3f-86b0-e35347f91cca")
+		(uuid "63d62336-6705-4b34-9a58-7a2c5fb5b4dd")
 	)
 	(wire
 		(pts
-			(xy 87.63 31.75) (xy 92.71 31.75)
+			(xy 86.36 54.61) (xy 99.06 54.61)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "58195ffa-bf14-42b7-a214-7861bb428b71")
+		(uuid "6d06bde6-81b0-48a0-8704-76e36eafb9c1")
 	)
 	(wire
 		(pts
-			(xy 87.63 46.99) (xy 92.71 46.99)
+			(xy 60.96 69.85) (xy 60.96 78.74)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "9357fe61-99f5-42fd-a425-d8c486268624")
+		(uuid "7bab6332-e5df-41fd-ae96-3ed223a96a09")
 	)
 	(wire
 		(pts
-			(xy 64.77 55.88) (xy 115.57 55.88)
+			(xy 86.36 52.07) (xy 99.06 52.07)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "994ffb44-3f03-4a9a-b31d-50c21999a20b")
+		(uuid "acf5f77d-13de-437b-b0d2-5006847b63aa")
 	)
 	(wire
 		(pts
-			(xy 90.17 49.53) (xy 92.71 49.53)
+			(xy 124.46 52.07) (xy 121.92 52.07)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "a2dc2d0e-949a-4221-8e9a-3c14d7e11d64")
+		(uuid "e13a6323-52c5-4f51-83dd-3e881bfb4fb8")
 	)
-	(label "VBUS"
-		(at 90.17 29.21 90)
-		(fields_autoplaced yes)
+	(wire
+		(pts
+			(xy 86.36 64.77) (xy 99.06 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ef257ba4-a464-4d7e-a022-8cb6419be299")
+	)
+	(label "GND"
+		(at 90.17 52.07 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left bottom)
 		)
-		(uuid "3d965a30-33d2-4e79-a23d-d7ff34b3a6d2")
+		(uuid "0b9c8a01-7da9-4495-80d1-c0052a1be02b")
+	)
+	(label "GND"
+		(at 90.17 69.85 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "2edff453-1819-40af-8a3b-7f01b3f82b93")
+	)
+	(label "USB2_D-"
+		(at 90.17 59.69 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "50abe04f-2d4a-41ba-b1f5-3a64015c7727")
+	)
+	(label "USB2_D+"
+		(at 90.17 62.23 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "6434a1af-45e2-4bc6-b27b-ba9a31b0f446")
+	)
+	(label "CC"
+		(at 90.17 64.77 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "811ea8ee-d846-49bf-87b0-cd013b9730e3")
+	)
+	(label "SHIELD"
+		(at 90.17 78.74 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "a286d8a8-d54a-46bd-8171-ab9bf89edf8f")
+	)
+	(label "VBUS"
+		(at 90.17 67.31 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "dbd0ab36-12d3-4bfc-b0d6-ad554dfa5059")
+	)
+	(label "VBUS"
+		(at 90.17 54.61 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "f55a6987-6bfb-46ac-818f-288f4a5b7e49")
 	)
 	(symbol
-		(lib_id "ded:GT-USB-8016A")
-		(at 105.41 40.64 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "035c00cc-f005-4ca6-8c2d-663767a7183b")
-		(property "Reference" "USB1"
-			(at 103.632 22.352 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "GT-USB-8016A"
-			(at 104.648 25.146 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "ded:USB-TYPE-C-SMD_GT-USB-8016A"
-			(at 105.41 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2411221125_G-Switch-GT-USB-8016A_C2988371.pdf"
-			(at 105.41 40.64 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 105.41 40.64 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "LCSC Part" "C2988371"
-			(at 105.41 59.69 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Designation" "GT-USB-8016A"
-			(at 105.41 40.64 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "B10"
-			(uuid "98932b81-c463-4b13-8829-1b3b8631ce16")
-		)
-		(pin "A3"
-			(uuid "f92732af-16b7-4d99-802e-953b78d57489")
-		)
-		(pin "A5"
-			(uuid "ba6b1dce-407a-4bec-a2e0-f34e6c3728e3")
-		)
-		(pin "A1"
-			(uuid "273e4c94-9dfb-49b2-b502-ded4762bc7df")
-		)
-		(pin "B11"
-			(uuid "e081604d-4772-481b-a47a-7edb4eef04a3")
-		)
-		(pin "S1"
-			(uuid "48cd1fdc-232b-495a-8875-a843b3527177")
-		)
-		(pin "A9"
-			(uuid "280e40d1-470c-4834-b941-fb7485f804bb")
-		)
-		(pin "A6"
-			(uuid "5ca73ac0-cf6b-431b-b74a-181edc6c275d")
-		)
-		(pin "A2"
-			(uuid "6ceb5910-fd16-494a-8f56-acb7111d12bc")
-		)
-		(pin "A7"
-			(uuid "33101d8c-3601-4af0-87f1-b2f8a358acfd")
-		)
-		(instances
-			(project ""
-				(path "/440f7d2e-5216-4c28-bc49-01163fd737fe"
-					(reference "USB1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "ded:GT-USB-8016A")
-		(at 74.93 40.64 0)
+		(lib_id "ded:HYCW675-USBC12-105B")
+		(at 77.47 60.96 0)
 		(mirror y)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "6a0c027f-093c-4472-be66-7914e36b5e3e")
-		(property "Reference" "USB2"
-			(at 76.2 22.6525 0)
+		(uuid "9f9a4c2c-8550-4004-8f1a-44f1f31a9eef")
+		(property "Reference" "USB3"
+			(at 77.47 46.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Value" "GT-USB-8016A"
-			(at 76.2 25.0768 0)
+		(property "Value" "HYCW675-USBC12-105B"
+			(at 77.47 74.93 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Footprint" "ded:USB-TYPE-C-SMD_GT-USB-8016A"
-			(at 74.93 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2411221125_G-Switch-GT-USB-8016A_C2988371.pdf"
-			(at 74.93 40.64 0)
+		(property "Footprint" "ded:USB-C-SMD_HYCW675-USBC12-105B"
+			(at 77.47 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -811,8 +581,8 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
-			(at 74.93 40.64 0)
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C53436585.pdf"
+			(at 77.47 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -820,8 +590,8 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC Part" "C2988371"
-			(at 74.93 59.69 0)
+		(property "Description" "USB Type-C plug, full-orientation USB 2.0, 0.80 mm PCB"
+			(at 77.47 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -829,8 +599,8 @@
 				(hide yes)
 			)
 		)
-		(property "Designation" "GT-USB-8016A"
-			(at 74.93 40.64 0)
+		(property "Manufacturer" "HOAUC(华宇创)"
+			(at 77.47 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -838,57 +608,90 @@
 				(hide yes)
 			)
 		)
-		(pin "B10"
-			(uuid "66394af6-aa14-4151-8e58-086af451d5e9")
+		(property "MPN" "HYCW675-USBC12-105B"
+			(at 77.47 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
 		)
-		(pin "A3"
-			(uuid "11a29b67-0cfb-4a80-ae42-e77a6f3eae98")
+		(property "LCSC Part" "C53436585"
+			(at 77.47 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
 		)
-		(pin "A5"
-			(uuid "4d6188fb-71d4-4eff-bb85-fd3c88d00d0c")
+		(pin "A12B1"
+			(uuid "5a5b7de1-1d98-4b42-b6b6-4fcdf8d5c18c")
 		)
-		(pin "S1"
-			(uuid "89ce9893-145f-41c1-915d-6a7b094e4041")
+		(pin "A9B4"
+			(uuid "f6d13c96-e70d-4f2b-9d18-8d39a417e98c")
 		)
-		(pin "A1"
-			(uuid "3df43632-5d27-46d9-b218-e16282537014")
-		)
-		(pin "B11"
-			(uuid "028ce093-48f7-4def-8ff2-af06751acf69")
-		)
-		(pin "A9"
-			(uuid "edd88f93-1ac0-457c-8f50-a3aa0db804c7")
-		)
-		(pin "A6"
-			(uuid "2f90dc56-8ef6-4e96-ba45-07844d4e61f4")
-		)
-		(pin "A2"
-			(uuid "4323f733-2bdd-4255-b1a3-00e6799031b2")
+		(pin "B5"
+			(uuid "940345eb-454a-4295-8229-64c2febd1348")
 		)
 		(pin "A7"
-			(uuid "5934fae8-224a-4468-9c51-91cb3cceb733")
+			(uuid "7891de2a-b96c-441b-aff8-b9eeee36d188")
+		)
+		(pin "A6"
+			(uuid "c443237c-e226-448c-a185-995fbb8ca6b1")
+		)
+		(pin "A5"
+			(uuid "0752807f-77dc-4c98-93cc-e775f8e3b7e2")
+		)
+		(pin "A4B9"
+			(uuid "a995182e-7613-4443-aedb-65fc03f9f835")
+		)
+		(pin "A1B12"
+			(uuid "cbf02b07-d225-4ecb-a1c8-0567dad242ef")
+		)
+		(pin "1"
+			(uuid "fb0bda8c-8b3d-40c0-b29c-6879a0554682")
+		)
+		(pin "2"
+			(uuid "1c352308-bbb4-472f-b2be-ed82b294143b")
 		)
 		(instances
 			(project "ded"
 				(path "/440f7d2e-5216-4c28-bc49-01163fd737fe"
-					(reference "USB2")
+					(reference "USB3")
 					(unit 1)
 				)
 			)
 		)
 	)
 	(symbol
-		(lib_id "power:VBUS")
-		(at 90.17 25.4 0)
+		(lib_id "ded:HYCW675-USBC12-105B")
+		(at 107.95 60.96 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "6ff8be40-5127-43a8-9851-1df77788356f")
-		(property "Reference" "#PWR02"
-			(at 90.17 29.21 0)
+		(uuid "b8b32d14-3d0c-4d01-893d-32501da5ccdf")
+		(property "Reference" "USB4"
+			(at 107.95 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "HYCW675-USBC12-105B"
+			(at 107.95 74.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "ded:USB-C-SMD_HYCW675-USBC12-105B"
+			(at 107.95 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -896,17 +699,8 @@
 				(hide yes)
 			)
 		)
-		(property "Value" "VBUS"
-			(at 90.17 22.225 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 90.17 25.4 0)
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C53436585.pdf"
+			(at 107.95 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -914,8 +708,8 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" ""
-			(at 90.17 25.4 0)
+		(property "Description" "USB Type-C plug, full-orientation USB 2.0, 0.80 mm PCB"
+			(at 107.95 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -923,88 +717,67 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Power symbol creates a global label with name \"VBUS\""
-			(at 90.17 25.4 0)
+		(property "Manufacturer" "HOAUC(华宇创)"
+			(at 107.95 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 				(hide yes)
 			)
+		)
+		(property "MPN" "HYCW675-USBC12-105B"
+			(at 107.95 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part" "C53436585"
+			(at 107.95 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "A12B1"
+			(uuid "e814b308-a9d2-47d1-a56d-92b87f28ec60")
+		)
+		(pin "A9B4"
+			(uuid "c2fd59b6-1e04-4c90-a3d5-f3f6d3c5b014")
+		)
+		(pin "B5"
+			(uuid "efaa0ac8-3722-4614-94ff-0af8842c13a5")
+		)
+		(pin "A7"
+			(uuid "fe0716e4-1611-43c4-8886-de3ff9389b69")
+		)
+		(pin "A6"
+			(uuid "2cda58a2-88b4-4582-9fb0-40329a326d17")
+		)
+		(pin "A5"
+			(uuid "1914b0d7-5c16-42db-9abf-0ee432dfe667")
+		)
+		(pin "A4B9"
+			(uuid "f2c24547-01b7-4e6f-aca6-77ec04257582")
+		)
+		(pin "A1B12"
+			(uuid "92f2f643-8ee9-4331-b329-f2f906ebf989")
 		)
 		(pin "1"
-			(uuid "3689e276-6cad-4814-ace9-eb4d74a31f41")
+			(uuid "6ad96dfa-a525-4860-a032-77ed6e6fa42c")
+		)
+		(pin "2"
+			(uuid "345574f6-a0e3-4d21-ab1d-d4d971381160")
 		)
 		(instances
-			(project ""
+			(project "ded"
 				(path "/440f7d2e-5216-4c28-bc49-01163fd737fe"
-					(reference "#PWR02")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 90.17 49.53 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a2191194-4348-4d63-9b51-c210d183e5cf")
-		(property "Reference" "#PWR01"
-			(at 90.17 55.88 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 90.17 53.6631 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 90.17 49.53 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 90.17 49.53 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 90.17 49.53 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "91e26e17-7dd7-4f6a-9773-a448478dd39c")
-		)
-		(instances
-			(project ""
-				(path "/440f7d2e-5216-4c28-bc49-01163fd737fe"
-					(reference "#PWR01")
+					(reference "USB4")
 					(unit 1)
 				)
 			)
@@ -1015,4 +788,5 @@
 			(page "1")
 		)
 	)
+	(embedded_fonts no)
 )
