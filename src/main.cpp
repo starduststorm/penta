@@ -65,10 +65,20 @@ extern "C" bool tud_mounted(void); // TinyUSB: has a USB host configured us?
 // permanently via reserve() in setup(); orientation changes are funcsel swaps.
 //   pio0: SM0 FastLED, SM1 port0 RX, SM2 port1 RX, SM3 PDM(auto)
 //   pio1: SM0 ccount,  SM1 touch,    SM2 port0 TX, SM3 port1 TX
-PioUart port0Swapped(/*tx*/ pio1, UART0_RX /*17*/, /*rx*/ pio0, UART0_TX /*16*/, 57600);
-PioUart port1Swapped(/*tx*/ pio1, UART1_RX /*25*/, /*rx*/ pio0, UART1_TX /*24*/, 57600);
+// Link baud. Both engines derive from it; the pads are 2mA/slow-slew so keep it
+// under a few Mbaud. 921600 makes a firmware push take a couple of seconds.
+#define LINK_BAUD 921600
+PioUart port0Swapped(/*tx*/ pio1, UART0_RX /*17*/, /*rx*/ pio0, UART0_TX /*16*/, LINK_BAUD);
+PioUart port1Swapped(/*tx*/ pio1, UART1_RX /*25*/, /*rx*/ pio0, UART1_TX /*24*/, LINK_BAUD);
 
-#include "audio.h"
+#include <audio.h>
+
+// The T3902's select pin (PDM_LRCLK, GPIO19) has no pull on the board, so it
+// must be driven or each unit's mic picks a clock edge at random and some read
+// as a flat line. Drive it HIGH (dustlib's fixSelectHIGH) -- the level the
+// arduino-pico PDM sampler expects.
+AudioInputPDM audioInput(PIN_PDM_DIN, PIN_PDM_CLK, /*fixSelectHIGH*/ true);
+FFTProcessing fftProcessing(audioInput, 10, 128);
 
 #undef FASTLED_USE_PROGMEM
 #define FASTLED_USE_PROGMEM 1
@@ -83,12 +93,33 @@ PioUart port1Swapped(/*tx*/ pio1, UART1_RX /*25*/, /*rx*/ pio0, UART1_TX /*24*/,
 
 #include "uartlink.h" // needs logf() from util.h
 // Two independent auto-negotiating links, one per port.
-SerialLink link0("link0", Serial1, port0Swapped, UART0_TX, UART0_RX, 57600);
-SerialLink link1("link1", Serial2, port1Swapped, UART1_TX, UART1_RX, 57600);
+SerialLink link0("link0", Serial1, port0Swapped, UART0_TX, UART0_RX, LINK_BAUD);
+SerialLink link1("link1", Serial2, port1Swapped, UART1_TX, UART1_RX, LINK_BAUD);
+
+// Port roles: the "main" port is J2 (USB, muxed to UART1 = link1), the "alt"
+// port is J1 (UART0 = link0). Topology counts are reported per side.
+#define ALT_PORT 0
+#define MAIN_PORT 1
+
+#include "topology.h"
+#include "chainwave.h"
+#include "usbmux.h"
+// Keeps J2 pointed at a computer or at the chain, whichever is actually there.
+UsbMuxArbiter usbMux;
+#include "fwpush.h"
+// Chain discovery: how many pentas sit on each side of us, and the total.
+ChainTopology topology;
+// Chain-ordered ring blink (replaces the timed periodics[0] automode).
+ChainWave chainWave;
+// Firmware propagation: push our image to a neighbor over the link.
+FirmwarePush fwPush;
 
 static void peerBlink();
 
-static void onLinkData(const char *name, const uint8_t *d, uint8_t n) {
+static void onLinkData(const char *name, int port, const uint8_t *d, uint8_t n) {
+  if (topology.onData(port, d, n)) return; // topology probes are consumed here
+  if (chainWave.onData(port, d, n)) return;
+  if (fwPush.onData(port, d, n)) return;
   logf("[%s] rx %u bytes: %.*s", name, n, n, (const char *)d);
   
   // Demo traffic: log DATA frames from each port; a "blink" payload blinks us.
@@ -96,8 +127,8 @@ static void onLinkData(const char *name, const uint8_t *d, uint8_t n) {
     peerBlink();
   }
 }
-static void onLink0Data(const uint8_t *d, uint8_t n) { onLinkData("link0", d, n); }
-static void onLink1Data(const uint8_t *d, uint8_t n) { onLinkData("link1", d, n); }
+static void onLink0Data(const uint8_t *d, uint8_t n) { onLinkData("link0", ALT_PORT, d, n); }
+static void onLink1Data(const uint8_t *d, uint8_t n) { onLinkData("link1", MAIN_PORT, d, n); }
 
 #include "ledgraph.h"
 
@@ -111,6 +142,15 @@ PersistentStorage storage(PentaState::dataSize());
 
 DrawingContext ctx;
 PatternManager patternManager(ctx);
+
+// Wave animation: light the circle in our color, fading in and out.
+static void chainWaveBlink(uint8_t mode) {
+  logf("wave: blink (mode %u)", mode);
+  patternManager.runOneShotPattern([](PatternRunner &) {
+    return (Pattern *)new BlinkPixelSet(kCircleLedsInOrder, pentaState.color(),
+                                        /*fadeIn*/ 150, /*fadeOut*/ 350, /*total*/ 650);
+  }, 1, 0x7F);
+}
 
 static void peerBlink() {
   static constexpr unsigned long kFlashPeriodMs = 250;
@@ -427,6 +467,10 @@ void chooseAutomode(int mode) {
   }, patternManager.highestPriority());
 }
 
+#if HARDWARE_VERSION >= 2
+static bool selectPulledLow = false; // result of the boot-time R15 check, for the 'I' command
+#endif
+
 void setup() {
   init_serial();
 
@@ -434,6 +478,8 @@ void setup() {
   // begin() them once and swap pin funcsels from there.
   Serial1.setTX(UART0_TX); Serial1.setRX(UART0_RX);
   Serial2.setTX(UART1_TX); Serial2.setRX(UART1_RX);
+  // Deep RX rings so a bulk transfer survives a few ms of FastLED.show().
+  Serial1.setFIFOSize(1024); Serial2.setFIFOSize(1024);
 
   // Seed RNG before starting the links: their randomized search dwell relies on
   // random() to keep two identical boards from flipping orientation in lockstep.
@@ -445,19 +491,27 @@ void setup() {
   uint32_t deviceId = (uint32_t)uid.id[0] | ((uint32_t)uid.id[1] << 8) |
                       ((uint32_t)uid.id[2] << 16) | ((uint32_t)uid.id[3] << 24);
 
+  logf("penta build %lu (%s %s)", (unsigned long)BUILD_EPOCH, __DATE__, __TIME__);
+
 #if HARDWARE_VERSION >= 2
-  // Route the shared USB-C port through the mux: LOW = RP2040 USB, HIGH = UART1
-  // Decided once at boot: a computer will have enumerated us by now, so look for a neighbor if not.
-  bool usbHostPresent = tud_mounted();
+  // Sanity-check the mux select pulldown (R15): with our weak internal pull-up
+  // fighting a 10k to ground the pin must still read low. If it reads high the
+  // pulldown is missing and the mux floats whenever we aren't driving it, e.g.
+  // in the bootloader.
   gpio_init(USBMUX_SELECT);
-  gpio_put(USBMUX_SELECT, !usbHostPresent);
-  gpio_set_dir(USBMUX_SELECT, GPIO_OUT);
-  logf("usb mux: port routed to %s (usb host %s)",
-       usbHostPresent ? "USB" : "UART1/link", usbHostPresent ? "present" : "absent");
+  gpio_pull_up(USBMUX_SELECT);
+  delayMicroseconds(100);
+  selectPulledLow = !gpio_get(USBMUX_SELECT);
+  gpio_disable_pulls(USBMUX_SELECT);
+  logf("usb mux select pulldown R15: %s", selectPulledLow ? "present" : "MISSING -- floats high");
+
+  // Route the shared USB-C port through the mux: LOW = RP2040 USB, HIGH = UART1.
+  // Not a one-shot decision: the arbiter keeps watching for a host or a
+  // neighbor and re-routes as things get plugged and unplugged (see usbmux.h).
+  usbMux.begin(USBMUX_SELECT, &link1);
 #endif
 
-  DigitalAudioProcessing::create<AudioInputPDM>(PIN_PDM_DIN, PIN_PDM_CLK);
-  FFTProcessing::create(FIVE+FIVE+FIVE);
+  
 
   static const float pio_clk_div = 40; // This should be tuned for the size of the buttons
   // Claim order matters -- PIO layout at boot: the arduino-pico core's
@@ -511,6 +565,11 @@ void setup() {
   port0Swapped.reserve();
   port1Swapped.reserve();
 
+  // Start the mic last so its PIO state machine is the one left over (pio0 SM3);
+  // starting it earlier shifts every other claim. Runs continuously so the FFT's
+  // rolling window is always warm.
+  audioInput.subscribe();
+
   // The links can start now that their PIO halves are reserved. Both engines
   // (hw UART + PIO) run for the life of the link; negotiation only swaps pin
   // funcsels between them.
@@ -518,6 +577,9 @@ void setup() {
   link1.onData(onLink1Data);
   link0.begin(deviceId);
   link1.begin(deviceId);
+  topology.begin(deviceId, &link0, &link1);
+  chainWave.begin(&topology, &link0, &link1, chainWaveBlink);
+  fwPush.begin(&topology, &link0, &link1);
 
   verifyPioLayout();
   // patternManager.setTestRunner<Wanderer>();
@@ -616,6 +678,8 @@ void loop() {
     firstLoop = false;
   }  
 
+  fftProcessing.frameReset();
+
 #if LINK_DIAG
   link0.diagLoop(Serial); // wire-test commands + periodic state dumps (port 0)
 #endif
@@ -623,6 +687,81 @@ void loop() {
   // Negotiate/maintain both inter-board links (orientation detection + framing).
   link0.update();
   link1.update();
+#if HARDWARE_VERSION >= 2
+  usbMux.update();    // computer or chain on J2? keep the mux pointed at what's there
+#endif
+  topology.update(); // probes the chain and tracks who is on each side
+  chainWave.update(); // chain-ordered ring blink, out to the far end and back
+  fwPush.update();    // firmware propagation sessions + auto-push to older neighbors
+
+  // While an update is on the link, keep the wire clear of housekeeping traffic
+  // (the push frames keep the link alive on their own).
+  bool pushBusy = fwPush.sending() || fwPush.receiving();
+  topology.setQuiet(pushBusy);
+  chainWave.setQuiet(pushBusy);
+
+  // While a firmware push is in flight, draw a determinate progress indicator
+  // on the outer ring: two arcs that start at one USB port's end of the ring
+  // and grow along both halves toward the other port's end, in the direction
+  // the data is moving. Sending (green): from the far port toward the port the
+  // update leaves through. Receiving (yellow): from the port the update
+  // arrives on toward the far port, i.e. onward down the chain. Rides on top
+  // of the running pattern (dimmed) and removes itself when the session ends.
+  static bool updatePulseShown = false;
+  if (pushBusy && !updatePulseShown) {
+    updatePulseShown = true;
+    patternManager.runOneShotDrawing([](DrawingContext &c, unsigned long) {
+      bool sending = fwPush.sending(), receiving = fwPush.receiving();
+      if (!sending && !receiving) return false;
+      // Ring index nearest each USB-C port, from the PCB: J1/alt is at index 22
+      // (pixel 92), J2/main at index 50 (pixel 120) -- opposite ends of the ring.
+      static const int kRingIndexOfPort[2] = {22, 50};
+      const int n = kCircleLedsInOrder.size();
+      int port = fwPush.activePort();
+      int from = sending ? kRingIndexOfPort[port ^ 1] : kRingIndexOfPort[port];
+      int to   = sending ? kRingIndexOfPort[port]     : kRingIndexOfPort[port ^ 1];
+      CRGB color = sending ? CRGB(0x00, 0xFF, 0x20) : CRGB(0xFF, 0xB0, 0x00);
+      float progress = fwPush.progress();
+      c.leds.fill_solid(CRGB::Black);
+      // for (PixelIndex px : kCircleLedsInOrder) c.leds[px] = color.scale8(12); // faint track
+      // one arc each way around the ring, from `from` toward `to`
+      for (int dir = -1; dir <= 1; dir += 2) {
+        int span = ((to - from) * dir % n + n) % n; // pixels from `from` to `to` in this direction
+        float lit = progress * span;
+        for (int k = 0; k <= span; k++) {
+          float f = lit - k; // how much of pixel k along the arc is lit
+          if (f <= 0) break;
+          uint8_t level = f >= 1 ? 0xFF : (uint8_t)(f * 0xFF);
+          c.leds[kCircleLedsInOrder[((from + dir * k) % n + n) % n]] = color.scale8(level);
+        }
+      }
+      return true;
+    }, patternManager.highestPriority(), 0xFF);
+  } else if (!pushBusy) {
+    updatePulseShown = false;
+  }
+
+  // Single-letter serial console commands.
+  while (Serial.available()) {
+    switch (Serial.read()) {
+      case 'T': topology.logState(); break;              // print chain topology
+      case 'I':                                          // boot-time facts, on demand
+        logf("penta build %lu (%s %s)", (unsigned long)BUILD_EPOCH, __DATE__, __TIME__);
+#if HARDWARE_VERSION >= 2
+        logf("usb mux select pulldown R15: %s", selectPulledLow ? "present" : "MISSING");
+        logf("usb mux: %s (host %s)", usbMux.stateName(), usbMux.hostPresent() ? "present" : "absent");
+#endif
+        logf("mic streaming: %s", audioInput.isStreaming() ? "yes" : "no");
+        verifyPioLayout();
+        break;
+      case 'W': chainWave.start(0); break;               // start a wave from here
+      case 'U': fwPush.pushAll(); break;                 // push our firmware to a neighbor
+      case 'P': fwPush.pullAny(); break;                 // ask a neighbor to push its firmware to us
+      case 'R': logf("rebooting"); Serial.flush(); rp2040.reboot(); break;
+      case 'B': logf("rebooting to bootloader"); Serial.flush(); rp2040.rebootToBootloader(); break;
+      default: break;
+    }
+  }
 
   // Demo traffic: once linked, send a heartbeat on each port every second.
   static unsigned long lastHeartbeat = 0;

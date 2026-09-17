@@ -398,7 +398,7 @@ public:
 class SoundBits : public Pattern, public PaletteRotation<CRGBPalette256>, FFTReceiver {
   Particles particles;
 public:
-  SoundBits() : particles(ledgraph, ctx, 0, 60, 1200, {all}) {
+  SoundBits() : FFTReceiver(fftProcessing), particles(ledgraph, ctx, 0, 60, 1200, {all}) {
     particles.flowRule = Particles::random;
     particles.setFadeUpDistance(3);
     particles.spawnPixels = &kPentaCenterLeds;
@@ -411,7 +411,7 @@ public:
     minBrightness = 10;
   }
 
-  const unsigned maxbits = FIVE*FIVE*FIVE;
+  const unsigned maxbits = 55;
   const int soundMinThreshold = 5;
   int soundThreshold = soundMinThreshold;
   unsigned long lastThreshAdjust = 0;
@@ -438,6 +438,7 @@ public:
     }
 
     particles.update();
+    fftLog();
   }
 
   const char *description() {

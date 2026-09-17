@@ -250,7 +250,7 @@ public:
     }
 
 private:
-    static constexpr size_t kFifo = 64;
+    static constexpr size_t kFifo = 1024; // deep enough for bulk transfers at high baud
 
     PIO _txPio; uint _txPin; uint _txSM = 0;
     PIO _rxPio; uint _rxPin; uint _rxSM = 0;

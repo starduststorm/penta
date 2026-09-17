@@ -198,6 +198,8 @@ public:
 #endif // LINK_DIAG
 
   bool isLinked() const { return _state == State::Linked; }
+  // millis() of the last verified frame from a real peer (0 if never).
+  unsigned long lastRxMs() const { return _lastRx; }
   int orientation() const { return _active; }          // 0 = normal, 1 = swapped
   uint32_t peerId() const { return _peerId; }
   void onData(DataHandler h) { _onData = h; }
@@ -248,8 +250,8 @@ private:
   static constexpr uint8_t kMaxPayload = 32;
   static constexpr uint8_t kMaxAppPayload = kMaxPayload - 1; // 1 byte for sender tag
   static constexpr unsigned long kBeaconMs = 80;     // HELLO rate while searching
-  static constexpr unsigned long kKeepaliveMs = 250; // PING rate once linked
-  static constexpr unsigned long kStaleMs = 3000;    // drop link after this much silence
+  static constexpr unsigned long kKeepaliveMs = 1000; // slow PING floor; topology DATA probes also refresh liveness (see onFrame _lastRx)
+  static constexpr unsigned long kStaleMs = 6000;    // drop link after this much silence (covers the slower keepalive + probe)
   static constexpr unsigned long kDwellMinMs = 280;  // per-TX-orientation search dwell
   static constexpr unsigned long kDwellMaxMs = 720;
 

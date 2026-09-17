@@ -11,3 +11,4 @@
 .vscode
 *-backups
 fabrication-toolkit-options.json
+src/build_epoch.h
