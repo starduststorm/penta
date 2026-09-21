@@ -15,7 +15,6 @@ extern char *__brkval;
 #include "pico.h"
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
-#include "touch.pio.h"
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -90,6 +89,7 @@ FFTProcessing fftProcessing(audioInput, 10, 128);
 #include <util.h>
 #include <drawing.h>
 #include <controls.h>
+#include <touchpio.h>
 
 #include "uartlink.h" // needs logf() from util.h
 // Two independent auto-negotiating links, one per port.
@@ -175,52 +175,9 @@ int touchIndexMap[FIVE] = {0,2,1,4,3};
 int touchIndexMap[FIVE] = {0,1,2,3,4};
 #endif
 
-#define TOUCH_PIO pio1
 #define TOUCH_PIN 0 // GPIO number for the first touch button
 #define TOUCH_COUNT FIVE // number of sequential touch buttons
-
-volatile uint touch_state = 0;
-volatile uint touch_state_last =0;
-volatile bool touch_change_flg = 0;
-volatile int touch_sm = 0; // state machine claimed by touch_setup
-
-// https://github.com/forshee9283/pio-touch
-// with modifications
-void touch_isr_handler(void) {
-    if (!pio_sm_is_rx_fifo_empty(TOUCH_PIO, touch_sm)) {
-        touch_state = (touch_state & 0xffffffe0)|(pio_sm_get(TOUCH_PIO, touch_sm));
-    }
-    if (touch_state!=touch_state_last) {
-        touch_change_flg = 1;
-    }
-    touch_state_last = touch_state;
-}
-
-int touch_setup(PIO pio_touch, int start_pin, int pin_count, const float clk_div) {
-    assert(pin_count <= FIVE, "FIVE pins max per state machine");
-    if (pin_count > FIVE) {
-        return 1;
-    }
-    int sm;
-    uint offset_touch = pio_add_program(TOUCH_PIO, &touch_program);
-    if (pin_count > 0) {
-        sm = pio_claim_unused_sm(pio_touch,true); // Panic if unavailible
-        touch_sm = sm; // remember for the ISR
-        // Route this SM's "RX FIFO not empty" to the PIO's *IRQ1* line, not IRQ0.
-        // The swapped-orientation PioUart RX owns the IRQ0 line; IRQ1 is a
-        // separate NVIC vector, so touch coexists with it even on the same PIO.
-        pio_set_irq1_source_enabled(pio_touch, (enum pio_interrupt_source)sm, true); // sm number == rx-fifo-not-empty source index
-        touch_init(pio_touch, sm, offset_touch, start_pin, pin_count, clk_div);
-        pio_sm_set_enabled(pio_touch, sm, true);
-    }
-    // Attach to the IRQ1 line of whichever PIO touch actually lives on.
-    const uint touch_irq = (pio_touch == pio0) ? PIO0_IRQ_1 : PIO1_IRQ_1;
-    irq_set_exclusive_handler(touch_irq, touch_isr_handler);
-    irq_set_enabled(touch_irq, true);
-    return 0;
-}
-
-//
+TouchPIO touch;
 
 // How many instruction words a PIO still has free. pio_can_add_program only
 // checks space for a relocatable program, so probe with descending sizes.
@@ -255,7 +212,7 @@ void verifyPioLayout() {
   }
   logf("[pio] uart SMs: p0 rx=%d tx=%d, p1 rx=%d tx=%d; touch sm=%d",
        port0Swapped.rxSM(), port0Swapped.txSM(),
-       port1Swapped.rxSM(), port1Swapped.txSM(), (int)touch_sm);
+       port1Swapped.rxSM(), port1Swapped.txSM(), touch.sm());
   assert(port0Swapped.reserved(), "port0 swapped uart failed to reserve PIO resources");
   assert(port1Swapped.reserved(), "port1 swapped uart failed to reserve PIO resources");
 }
@@ -308,21 +265,6 @@ void startupWelcome() {
 }
 
 // SETUP ///////////////////////////////////////////////
-
-class TouchButton : public SPSTButton {
-  void initPin(int pin) { } // no-op, skip SPSTButton init and do pin init in constructor
-public:
-  uint8_t touchPinIndex;
-  TouchButton(uint8_t index) : touchPinIndex(index), SPSTButton(-1) { }
-
-  bool isButtonPressed() {
-    if (touch_change_flg) {
-      return touch_state & (1 << touchPinIndex);
-    }
-    return false;
-  }
-};
-
 
 // TODO: the idea was to have each arrow's timed/coordinated patterns be toggled on and off with long-press
 //   this touch-feedback and animation could be improved.
@@ -512,18 +454,25 @@ void setup() {
 
   
 
-  static const float pio_clk_div = 40; // This should be tuned for the size of the buttons
   // Claim order matters -- PIO layout at boot: the arduino-pico core's
   // cycle-counter (ccount.pio) permanently holds pio1 SM0, so touch lands on
   // pio1 SM1, FastLED on pio0 SM0, and PioUart::reserve() (below, after
   // addLeds) claims the rest. See piouart.h and verifyPioLayout().
-  touch_setup(TOUCH_PIO, TOUCH_PIN, TOUCH_COUNT, pio_clk_div);
+  // Touch is pinned to pio1 to keep its 20-word program off pio0 with the
+  // uart rx program, and to IRQ1 because the swapped-orientation PioUart RX
+  // owns the IRQ0 line; IRQ1 is a separate NVIC vector.
+  TouchPIO::Options touchOptions;
+  touchOptions.pio = pio1;
+  touchOptions.irqLine = 1;
+  touchOptions.clkDiv = 40; // This should be tuned for the size of the buttons
+  bool touchBegan = touch.begin(TOUCH_PIN, TOUCH_COUNT, touchOptions);
+  assert(touchBegan, "touch failed to claim a pio1 state machine");
 
   TouchButton *tbs[FIVE];
   for (int i = 0; i < FIVE; ++i) {
     int arrowIndex = touchIndexMap[i];
     logf("pressed touch button %i for arrow index %i", i, arrowIndex);
-    tbs[i] = new TouchButton(i);
+    tbs[i] = new TouchButton(touch, i);
     tbs[i]->onSinglePress([arrowIndex] {
       chooseMode(arrowIndex);
     });

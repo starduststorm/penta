@@ -61,7 +61,7 @@ public:
         : _txPio(txPio), _txPin(txPin), _rxPio(rxPio), _rxPin(rxPin), _baud(baud) {}
 
     // Claim the SMs permanently and load the programs (once per PIO). Call once
-    // at boot, AFTER FastLED.addLeds and touch_setup have taken their SMs.
+    // at boot, AFTER FastLED.addLeds and touch.begin have taken their SMs.
     void reserve() {
         // Claim the lowest free SM on each target PIO. Non-panicking (-1 on full)
         // so reserve() reports instead of locking up if the budget is ever blown.
