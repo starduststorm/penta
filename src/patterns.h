@@ -438,7 +438,6 @@ public:
     }
 
     particles.update();
-    fftLog();
   }
 
   const char *description() {

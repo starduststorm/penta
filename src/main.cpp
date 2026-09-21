@@ -20,7 +20,7 @@ extern char *__brkval;
 #include <Arduino.h>
 #include <SPI.h>
 
-#define USE_AUTOMODES false
+#define USE_AUTOMODES true
 
 #if HARDWARE_VERSION >= 2
 
@@ -102,15 +102,18 @@ SerialLink link1("link1", Serial2, port1Swapped, UART1_TX, UART1_RX, LINK_BAUD);
 #define MAIN_PORT 1
 
 #include "topology.h"
-#include "chainwave.h"
+#include "neighborhood.h"
 #include "usbmux.h"
 // Keeps J2 pointed at a computer or at the chain, whichever is actually there.
 UsbMuxArbiter usbMux;
 #include "fwpush.h"
 // Chain discovery: how many pentas sit on each side of us, and the total.
 ChainTopology topology;
-// Chain-ordered ring blink (replaces the timed periodics[0] automode).
-ChainWave chainWave;
+// Chain-coordinated automodes: each periodic animation is a wave passed board
+// to board over the links (see neighborhood.h), replacing the old clock-based
+// sawtoothEvery() timing with its per-board phase offsets.
+PatternNeighborhoods neighborhoods;
+PatternNeighborhood automodes[FIVE];
 // Firmware propagation: push our image to a neighbor over the link.
 FirmwarePush fwPush;
 
@@ -118,7 +121,7 @@ static void peerBlink();
 
 static void onLinkData(const char *name, int port, const uint8_t *d, uint8_t n) {
   if (topology.onData(port, d, n)) return; // topology probes are consumed here
-  if (chainWave.onData(port, d, n)) return;
+  if (neighborhoods.onData(port, d, n)) return;
   if (fwPush.onData(port, d, n)) return;
   logf("[%s] rx %u bytes: %.*s", name, n, n, (const char *)d);
   
@@ -142,15 +145,6 @@ PersistentStorage storage(PentaState::dataSize());
 
 DrawingContext ctx;
 PatternManager patternManager(ctx);
-
-// Wave animation: light the circle in our color, fading in and out.
-static void chainWaveBlink(uint8_t mode) {
-  logf("wave: blink (mode %u)", mode);
-  patternManager.runOneShotPattern([](PatternRunner &) {
-    return (Pattern *)new BlinkPixelSet(kCircleLedsInOrder, pentaState.color(),
-                                        /*fadeIn*/ 150, /*fadeOut*/ 350, /*total*/ 650);
-  }, 1, 0x7F);
-}
 
 static void peerBlink() {
   static constexpr unsigned long kFlashPeriodMs = 250;
@@ -424,14 +418,19 @@ void chooseMode(int mode) {
   }, patternManager.highestPriority(), 0xFF);
 }
 
-void chooseAutomode(int mode) {
-  bool turnAutomodeOn = periodics[mode] && periodics[mode]->paused;
-  logf("chooseAutomode %i, turn %s", mode, turnAutomodeOn ? "ON" : "OFF");
-  mode = constrain(mode, 0, kPentaArrows[0].size()-1);
-
-  periodics[mode]->paused = !periodics[mode]->paused;
-  pentaState.automaticModes ^= 1 << mode;
+// The chain shares one enable bitfield (see neighborhood.h); this runs
+// whenever it changes, whether from our own long-press or a neighbor's.
+static void automodesChanged(uint8_t bits) {
+  pentaState.automaticModes = bits;
   storage.setValue(pentaState);
+}
+
+void chooseAutomode(int mode) {
+  mode = constrain(mode, 0, kPentaArrows[0].size()-1);
+  bool turnAutomodeOn = !automodes[mode].enabled;
+  logf("chooseAutomode %i, turn %s", mode, turnAutomodeOn ? "ON" : "OFF");
+
+  neighborhoods.setEnabled(mode, turnAutomodeOn); // propagates along the chain
 
   int duration = 1200;
   patternManager.runOneShotDrawing([duration, mode, turnAutomodeOn](DrawingContext &ctx, unsigned long elapsed) {
@@ -449,10 +448,10 @@ void chooseAutomode(int mode) {
       }
     }
     for (int i = 0; i < FIVE; ++i) {
-      if (i == mode || !periodics[i]->paused) {
+      if (i == mode || automodes[i].enabled) {
         uint8_t sectionBrightness = brightness;
         if (i == mode) {
-          if (periodics[i]->paused && elapsed > duration/5) {
+          if (!automodes[i].enabled && elapsed > duration/5) {
             sectionBrightness = max(0, 0xFF - 0xFF * (int)(elapsed-duration/5)/(duration/5));
           }
         }
@@ -578,7 +577,8 @@ void setup() {
   link0.begin(deviceId);
   link1.begin(deviceId);
   topology.begin(deviceId, &link0, &link1);
-  chainWave.begin(&topology, &link0, &link1, chainWaveBlink);
+  neighborhoods.begin(&topology, &link0, &link1);
+  neighborhoods.onEnabledChanged(automodesChanged);
   fwPush.begin(&topology, &link0, &link1);
 
   verifyPioLayout();
@@ -595,38 +595,75 @@ void setup() {
   indexedRunner = patternManager.setupIndexedRunner(0);
 
 #if USE_AUTOMODES
+  // Each automode is a PatternNeighborhood (how the wave travels the chain)
+  // plus a conditional runner whose alpha follows that neighborhood's
+  // envelope from the moment the wave reaches this board. The old per-board
+  // phase offsets (320 ms * colorIndex) are now the hop delay.
+  automodes[0].name = "circle blink";
+  automodes[0].periodMs = 25 * 1000;
+  automodes[0].hopMs = 320;
+  automodes[0].bounces = 1;
+  automodes[0].fadeInMs = 300; automodes[0].holdMs = 0; automodes[0].fadeOutMs = 300;
   periodics[0] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kCircleLedsInOrder, pentaState.color());
-  }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(25*1000, 300, -320*pentaState.colorIndex));
+  }, [] (PatternRunner &runner) {
+    return ease8InOutCubic(automodes[0].alpha());
   }, 1, 0x7F);
 
+  automodes[1].name = "starwise blink";
+  automodes[1].periodMs = 10 * 1000;
+  automodes[1].delayMs = 500;
+  automodes[1].hopMs = 320;
+  automodes[1].bounces = 1;
+  automodes[1].fadeInMs = 300; automodes[1].holdMs = 0; automodes[1].fadeOutMs = 300;
   periodics[1] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kStarwiseLeds, pentaState.color());
-  }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(32*1000, 300, 320*pentaState.colorIndex + 500));
+  }, [] (PatternRunner &runner) {
+    return ease8InOutCubic(automodes[1].alpha());
   }, 1, 0xFF);
 
+  automodes[2].name = "starwise sweep";
+  automodes[2].periodMs = 15 * 1000;
+  automodes[2].delayMs = 1000;
+  automodes[2].hopMs = 320;
+  automodes[2].bounces = 1;
+  automodes[2].fadeInMs = 150; automodes[2].holdMs = 650; automodes[2].fadeOutMs = 150;
   periodics[2] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new StarwisePattern(650);
-  }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(39*1000, 150, 320*pentaState.colorIndex, 650));
+  }, [] (PatternRunner &runner) {
+    return ease8InOutCubic(automodes[2].alpha());
   }, 1, 0xFF);
 
+  automodes[3].name = "palette starwise";
+  automodes[3].periodMs = 18 * 1000;
+  automodes[3].delayMs = 1500;
+  automodes[3].hopMs = 320;
+  automodes[3].bounces = 1;
+  automodes[3].fadeInMs = 300; automodes[3].holdMs = 0; automodes[3].fadeOutMs = 300;
   periodics[3] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     // TODO: it would be nice to pull the palette from the running pattern here, but we don't know if it inherits from PaletteRotation bc not all Patterns do
     CRGBPalette256 palette;
     PaletteManager<CRGBPalette256>::getRandomPalette(&palette);
     return new BlinkPixelSet(kStarwiseLeds, palette);
-  }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(18*1000, 300, 320*pentaState.colorIndex + 500));
+  }, [] (PatternRunner &runner) {
+    return ease8InOutCubic(automodes[3].alpha());
   }, 1, 0xFF);
 
+  automodes[4].name = "five triangles";
+  automodes[4].periodMs = 59 * 1000;
+  automodes[4].delayMs = 2000;
+  automodes[4].hopMs = 600;
+  automodes[4].bounces = 1;
+  automodes[4].fadeInMs = 0; automodes[4].holdMs = 1000; automodes[4].fadeOutMs = 0;
   periodics[4] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkFiveTriangles(pentaState.color(), 1000);
-  }, [] (PatternRunner &runner) { 
-    return ease8InOutCubic(sawtoothEvery(59*1000, 0, 320*pentaState.colorIndex, 1000));
+  }, [] (PatternRunner &runner) {
+    return ease8InOutCubic(automodes[4].alpha());
   }, 1, 0xFF);
+
+  for (int i = 0; i < FIVE; ++i) {
+    neighborhoods.add(i, &automodes[i]);
+  }
 #endif
 
   storage.log();
@@ -636,22 +673,15 @@ void setup() {
   if (storedState.automaticModes == 0xFF) {
     // fresh state
     logf("Fresh penta state");
-    for (int i = 0 ; i < FIVE; ++i) {
-      if (periodics[i]) {
-        periodics[i]->paused = true;
-      }
-    }
+    neighborhoods.setEnabledBits(0, /*propagate*/ false);
   } else {
     // had stored state
     logf("initializing from stored state..");
     pentaState = storedState;
     indexedRunner->runPatternAtIndex(pentaState.arrowIndex);
-    
-    for (int i = 0 ; i < FIVE; ++i) {
-      if (periodics[i]) {
-        periodics[i]->paused = 0 == (pentaState.automaticModes & (1<<i));
-      }
-    }
+    // Adopt the stored enable bits locally; the chain reconciles on the next
+    // toggle anywhere (nothing is on the wire yet at this point anyway).
+    neighborhoods.setEnabledBits(pentaState.automaticModes, /*propagate*/ false);
   }
 
 
@@ -691,14 +721,14 @@ void loop() {
   usbMux.update();    // computer or chain on J2? keep the mux pointed at what's there
 #endif
   topology.update(); // probes the chain and tracks who is on each side
-  chainWave.update(); // chain-ordered ring blink, out to the far end and back
+  neighborhoods.update(); // hop automode waves along the chain, launch new ones if we originate
   fwPush.update();    // firmware propagation sessions + auto-push to older neighbors
 
   // While an update is on the link, keep the wire clear of housekeeping traffic
   // (the push frames keep the link alive on their own).
   bool pushBusy = fwPush.sending() || fwPush.receiving();
   topology.setQuiet(pushBusy);
-  chainWave.setQuiet(pushBusy);
+  neighborhoods.setQuiet(pushBusy);
 
   // While a firmware push is in flight, draw a determinate progress indicator
   // on the outer ring: two arcs that start at one USB port's end of the ring
@@ -743,7 +773,8 @@ void loop() {
 
   // Single-letter serial console commands.
   while (Serial.available()) {
-    switch (Serial.read()) {
+    int c = Serial.read();
+    switch (c) {
       case 'T': topology.logState(); break;              // print chain topology
       case 'I':                                          // boot-time facts, on demand
         logf("penta build %lu (%s %s)", (unsigned long)BUILD_EPOCH, __DATE__, __TIME__);
@@ -754,7 +785,10 @@ void loop() {
         logf("mic streaming: %s", audioInput.isStreaming() ? "yes" : "no");
         verifyPioLayout();
         break;
-      case 'W': chainWave.start(0); break;               // start a wave from here
+      case 'W': neighborhoods.start(0); break;           // start an automode-0 wave from here
+      case '0': case '1': case '2': case '3': case '4':  // start that automode's wave from here
+        neighborhoods.start(c - '0'); break;
+      case 'N': neighborhoods.logState(); break;         // print automode/neighborhood state
       case 'U': fwPush.pushAll(); break;                 // push our firmware to a neighbor
       case 'P': fwPush.pullAny(); break;                 // ask a neighbor to push its firmware to us
       case 'R': logf("rebooting"); Serial.flush(); rp2040.reboot(); break;
