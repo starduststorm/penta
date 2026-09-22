@@ -78,6 +78,8 @@ PioUart port1Swapped(/*tx*/ pio1, UART1_RX /*25*/, /*rx*/ pio0, UART1_TX /*24*/,
 // arduino-pico PDM sampler expects.
 AudioInputPDM audioInput(PIN_PDM_DIN, PIN_PDM_CLK, /*fixSelectHIGH*/ true);
 FFTProcessing fftProcessing(audioInput, 10, 128);
+// keeps the mic streaming amplitude measurements for sound patterns' run conditions
+AmplitudeReceiver *ambientSound = NULL;
 
 #undef FASTLED_USE_PROGMEM
 #define FASTLED_USE_PROGMEM 1
@@ -507,6 +509,8 @@ void setup() {
 
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
 
+  ambientSound = new AmplitudeReceiver(audioInput);
+
   // Pin the swapped-UART PIO state machines now that touch (pio1 SM1) and
   // FastLED (pio0 SM0) have claimed theirs. Holds the claims for the whole
   // session so PDM/FastLED/touch placement stays deterministic.
@@ -787,6 +791,7 @@ void loop() {
   if (pixelsHavePower) {
     FastLED.show();
   }
+  ambientSound->ambientLevel(); // drain the mic every frame to keep it accurate
   
   fc.loop();
   fc.clampToFramerate(240);

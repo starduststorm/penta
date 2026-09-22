@@ -394,11 +394,10 @@ public:
 
 /* ------------------------------------------------------------------------------- */
 
-
-class SoundBits : public Pattern, public PaletteRotation<CRGBPalette256>, FFTReceiver {
+class SoundBits : public SoundPattern, public PaletteRotation<CRGBPalette256> {
   Particles particles;
 public:
-  SoundBits() : FFTReceiver(fftProcessing), particles(ledgraph, ctx, 0, 60, 1200, {all}) {
+  SoundBits() : SoundPattern(fftProcessing), particles(ledgraph, ctx, 0, 60, 1200, {all}) {
     particles.flowRule = Particles::random;
     particles.setFadeUpDistance(3);
     particles.spawnPixels = &kPentaCenterLeds;
@@ -409,34 +408,34 @@ public:
       bit.brightness = raw;
     };
     minBrightness = 10;
+
+    // Pixel-noise floor: the nearby WS2812 lines seem to be making PDM very noisy - raise noise floor to compensate
+    minFFTLevelThreshold = fftLevelThreshold = kPanelMicNoiseFFTLevel;
   }
 
-  const unsigned maxbits = 55;
-  const int soundMinThreshold = 5;
-  int soundThreshold = soundMinThreshold;
-  unsigned long lastThreshAdjust = 0;
+  static constexpr int kPanelMicNoiseFFTLevel = FIVE+FIVE+FIVE;
+  const unsigned maxbits = (FIVE+FIVE)*FIVE+FIVE;
 
   void update() {
     FFTFrame frame = spectrumFrame();
-    // FFTProcessing::shared()->logFrame(frame);
     for (unsigned b = 0; b < frame.size; ++b) {
-      if (frame.spectrum[b] > soundThreshold) {
-        
+      int32_t level = frame.spectrum[b] - fftLevelThreshold;
+      if (level > 0) {
         if (particles.particles.size() < maxbits) {
           // loglf("levels[%i]: %i; making a bit; out bits = %u, in bits = %u...", b, spectrum[b], bitsFillerOut.bits.size(), bitsFillerIn.bits.size());
-          unsigned maxlifespan = 800;//
+          int32_t maxLifespan = 500;
           Particle &bit = particles.addParticle();
-          bit.lifespan = min(maxlifespan, maxlifespan * (frame.spectrum[b]-soundThreshold)/20);
+          bit.lifespan = min(maxLifespan, max(0, maxLifespan * level/30));
 
           uint8_t colorIndex = millis() / 100 + 0xFF * b / 13;
           CRGB color = getPaletteColor(colorIndex);
-          color.nscale8(min(0xFF, 0xFF * (frame.spectrum[b]-soundThreshold)/10));
+          color.nscale8(min(0xFF, 0xFF * level/10));
           bit.color = color;
           bit.colorIndex = colorIndex;
         }
       }
     }
-
+    autoGainUpdate();
     particles.update();
   }
 
