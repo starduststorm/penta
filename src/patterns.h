@@ -180,6 +180,9 @@ public:
     bitsFiller.spawnPixels = &kCircleLedsInOrder;
     bitsFiller.flowRule = Particles::priority;
     bitsFiller.followContinueTo = true;
+    // Triangle points have two clockwise edges: the circle edge and the reversed star chord (clockwise|counterstarwise).
+    // Particles now pick randomly among same-priority edges, so pin them to the circle except while dipping into the star.
+    bitsFiller.allowedPixels = &kCircleLeds;
     for (int i = 0; i < FIVE; ++i) {
       Particle &bit = bitsFiller.addParticle();
       bit.px = kCircleLedsInOrder[(i * kCircleLedsInOrder.size() / FIVE) % kCircleLedsInOrder.size()];
@@ -193,14 +196,23 @@ public:
   
   uint8_t loopCounter = 0;
   bool movedOff = false;
+  bool dipping = false;
+  bool leftCircle = false;
   void update() {
-    if (bitsFiller.particles[pentaState.colorIndex].px == kTrianglePointLeds[2]) {
+    bool onCircle = kCircleLeds.count(bitsFiller.particles[pentaState.colorIndex].px);
+    if (dipping && !onCircle) {
+      leftCircle = true;
+    }
+    if (dipping && leftCircle && onCircle) {
       // finished crossing
+      dipping = false;
+      leftCircle = false;
       for (Particle &bit : bitsFiller.particles) {
         bit.directions = MakeEdgeTypesQuad(EdgeType::clockwise);
-        bitsFiller.fadeDown = 7<<8;
-        bitsFiller.setAllSpeed(45);
       }
+      bitsFiller.allowedPixels = &kCircleLeds;
+      bitsFiller.fadeDown = 7<<8;
+      bitsFiller.setAllSpeed(45);
     }
     if (bitsFiller.particles[pentaState.colorIndex].px != kTrianglePointLeds[4]) {
       movedOff = true;
@@ -210,9 +222,11 @@ public:
       movedOff = false;
       if (loopCounter == 3) {
         // take a dip into the star
+        dipping = true;
         for (Particle &bit : bitsFiller.particles) {
           bit.directions = MakeEdgeTypesQuad(EdgeType::starwise, EdgeType::clockwise);
         }
+        bitsFiller.allowedPixels = NULL;
         bitsFiller.fadeDown = 3<<8;
         bitsFiller.setAllSpeed(40);
         loopCounter = 0;
