@@ -16,17 +16,11 @@ using Particles = ParticleSim<LED_COUNT>;
 
 struct PentaState : Persistable {
   uint8_t arrowIndex=0;
-  uint8_t colorIndex=0;
+  uint8_t colorIndex=0; // unused
   uint8_t automaticModes=0; // bitfield
   static constexpr size_t dataSize() {
     // FIXME: sizeof(PentaState) == 8, because we get some size added by using virtual functions in Persistable here. not sure if I need these high level coding practices.
     return 3;
-  }
-  CRGB color(uint8_t bpm=0, uint8_t phase=0) {
-    // static const vector<CRGB> colors = {CHSV(0, 0xFF, 0xFF), ; // FIXME: test/figure out like 10 good color choices
-    static const std::vector<CRGB> colors = {CRGB::Red, CRGB::Yellow, CRGB::Green, CRGB::Blue, CRGB::Purple, };
-    colorIndex = colorIndex % colors.size();
-    return colors[colorIndex];
   }
 
   virtual String serialize() {
@@ -48,6 +42,20 @@ struct PentaState : Persistable {
   }
 };
 PentaState pentaState;
+
+// One palette shared by every automode and by the arrow flash that previews it.
+// double tap for new new palette
+PaletteRotation<CRGBPalette256> automodePalette(/*minBrightness*/ 20);
+
+// Where this unit sits in the shared palette: chain positions spread over the
+// palette's 0..0xFF range, so a wave running down the chain sweeps through it.
+uint8_t neighborhoodPaletteIndex() {
+  int total = max(1, topology.total());
+  return 0xFF * topology.position() / total;
+}
+CRGB neighborhoodColor() {
+  return automodePalette.getPaletteColor(neighborhoodPaletteIndex());
+}
 
 /* ------------------------------------------------------------------------------- */
 
@@ -94,38 +102,29 @@ public:
 };
 
 class BlinkFiveTriangles : public Pattern {
-  CRGB color;
   unsigned long duration;
 public:
-  BlinkFiveTriangles(CRGB color, unsigned long duration) : color(color), duration(duration) {
-    
-  }
+  BlinkFiveTriangles(unsigned long duration) : duration(duration) { }
   void update() {
     ctx.leds.fill_solid(CRGB::Black);
-    const int fadeTime = duration/6;
-    const int plateauTime = 0;
+    // Each triangle fades in and out over blinkLen, each next triangle's animation overlaps the previous
+    const unsigned long blinkLen = duration / 3;
+    const unsigned long stagger = blinkLen / 2;
     unsigned long rt = runTime();
     for (int t = 0; t < FIVE; ++t) {
-      auto theset = pentaTriangles[(t + pentaState.colorIndex)%FIVE];
-      uint8_t brightness = 0;
-      if (rt < t * (fadeTime+plateauTime)) {
-      } else if (rt < t * (fadeTime+plateauTime) + fadeTime) {
-        brightness = 0xFF * (rt - t * (fadeTime+plateauTime)) / fadeTime;
-      } else if (rt < t * (fadeTime+plateauTime) + fadeTime + plateauTime) {
-        brightness = 0xFF;
-      } else if (rt < t * (fadeTime+plateauTime) + 2*fadeTime + plateauTime) {
-        brightness = 0xFF - 0xFF * (rt - t * (fadeTime+plateauTime) - fadeTime - plateauTime) / fadeTime;
+      unsigned long t0 = t * stagger;
+      if (rt < t0 || rt >= t0 + blinkLen) {
+        continue;
       }
-      
-      brightness = ease8InOutCubic(dim8_raw(brightness));
-      if (t == 4) {
-        logf("t == 4, rt=%i, brightness = %i", rt, brightness);
-      }
-      CRGB dimmed = color.scale8(brightness);
-      int i = 0;
+      // Triangular 0..255..0 envelope across the blink, smoothed to a sine-ish curve
+      uint8_t phase = 0xFF * (rt - t0) / blinkLen;
+      uint8_t brightness = ease8InOutCubic(triwave8(phase));
+      int point = (t + topology.position()) % FIVE; // each unit in the chain starts one triangle over
+      uint8_t paletteIndex = neighborhoodPaletteIndex() + 0xFF * point / FIVE;
+      CRGB dimmed = automodePalette.getPaletteColor(paletteIndex, brightness);
+      auto theset = pentaTriangles[point];
       for (auto px : theset) {
-        uint8_t scaling = dim8_raw(dim8_raw(0xFF * (rt/(FIVE+FIVE) + i++)/theset.size()));
-        ctx.point(px, dimmed.scale8(scaling), blendBrighten);
+        ctx.point(px, dimmed, blendBrighten);
       }
     }
   }
@@ -152,16 +151,16 @@ public:
   }
 };
 
-class StarwisePattern : public Pattern, PaletteRotation<CRGBPalette256> {
+// Automode: one dot sweeps the star, colored from the shared automode palette.
+class StarwisePattern : public Pattern {
 public:
   unsigned long cycleMillis;
   StarwisePattern(unsigned long cycleMillis=1000) : cycleMillis(cycleMillis) { }
   void update() {
     ctx.leds.fadeToBlackBy(4);
     uint8_t curIndex = (kStarwiseLeds.size() * millis()/cycleMillis) % kStarwiseLeds.size();
-    CRGB paletteColor = getShiftingPaletteColor(0xFF * pentaState.colorIndex / FIVE + curIndex, FIVE*FIVE);
+    CRGB paletteColor = automodePalette.getShiftingPaletteColor(neighborhoodPaletteIndex() + curIndex, FIVE*FIVE);
     ctx.leds[kStarwiseLeds[curIndex]] = paletteColor;
-    // paletteColor.lerp8(pentaState.color, sawtoothEvery(10*1000, 1000, -500*pentaState.colorIndex));
   }
 
   const char *description() {

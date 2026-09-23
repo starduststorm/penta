@@ -343,7 +343,9 @@ void chooseMode(int mode) {
   }
 
   if (millis() - lastModeChoose < 800 && pentaState.arrowIndex == mode) {
-    pentaState.colorIndex++;
+    // double tap on the current arrow: new palette for the automodes
+    logf("new automode palette");
+    automodePalette.randomizePalette();
   }
   pentaState.arrowIndex = mode;
   lastModeChoose = millis();
@@ -353,9 +355,9 @@ void chooseMode(int mode) {
   storage.setValue(pentaState);
 
   patternManager.runOneShotPattern([] (PatternRunner &runner) {
-    auto theset = kPentaArrows[pentaState.arrowIndex];
-    std::vector vec(theset.begin(), theset.end());
-    BlinkPixelSet *pattern = new BlinkPixelSet(vec, pentaState.color());
+    // spinning mirrored palette runs down the arrow
+    const std::vector<PixelIndex> &arrow = arrows[pentaState.arrowIndex];
+    BlinkPixelSet *pattern = new BlinkPixelSet(arrow, automodePalette.getPalette());
     pattern->fadeInDuration = 100;
     pattern->totalDuration = 600;
     pattern->fadeOutDuration = 400;
@@ -508,7 +510,7 @@ void setup() {
   assert(ledgraph.adjList.size() == LED_COUNT, "adjlist size should match LED_COUNT");
   findArrows();
 
-  FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT);
+  FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT).setCorrection(TypicalSMD5050);
 
   ambientSound = new AmplitudeReceiver(audioInput);
 
@@ -550,17 +552,15 @@ void setup() {
   indexedRunner = patternManager.setupIndexedRunner(0);
 
 #if USE_AUTOMODES
-  // Each automode is a PatternNeighborhood (how the wave travels the chain)
-  // plus a conditional runner whose alpha follows that neighborhood's
-  // envelope from the moment the wave reaches this board. The old per-board
-  // phase offsets (320 ms * colorIndex) are now the hop delay.
+  // Run automode patterns on neighborhood for duration, fading in for their phase offset as hop delay
+  automodePalette.secondsPerPalette = 30;
   automodes[0].name = "circle blink";
   automodes[0].periodMs = 25 * 1000;
   automodes[0].hopMs = 320;
   automodes[0].bounces = 1;
   automodes[0].fadeInMs = 300; automodes[0].holdMs = 0; automodes[0].fadeOutMs = 300;
   periodics[0] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-    return new BlinkPixelSet(kCircleLedsInOrder, pentaState.color());
+    return new BlinkPixelSet(kCircleLedsInOrder, neighborhoodColor());
   }, [] (PatternRunner &runner) {
     return ease8InOutCubic(automodes[0].alpha());
   }, 1, 0x7F);
@@ -572,7 +572,7 @@ void setup() {
   automodes[1].bounces = 0;
   automodes[1].fadeInMs = 300; automodes[1].holdMs = 0; automodes[1].fadeOutMs = 300;
   periodics[1] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-    return new BlinkPixelSet(kStarwiseLeds, pentaState.color());
+    return new BlinkPixelSet(kStarwiseLeds, neighborhoodColor());
   }, [] (PatternRunner &runner) {
     return ease8InOutCubic(automodes[1].alpha());
   }, 1, 0xFF);
@@ -596,10 +596,7 @@ void setup() {
   automodes[3].bounces = 0;
   automodes[3].fadeInMs = 300; automodes[3].holdMs = 0; automodes[3].fadeOutMs = 300;
   periodics[3] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-    // TODO: it would be nice to pull the palette from the running pattern here, but we don't know if it inherits from PaletteRotation bc not all Patterns do
-    CRGBPalette256 palette;
-    PaletteManager<CRGBPalette256>::getRandomPalette(&palette);
-    return new BlinkPixelSet(kStarwiseLeds, palette);
+    return new BlinkPixelSet(kStarwiseLeds, automodePalette.getPalette());
   }, [] (PatternRunner &runner) {
     return ease8InOutCubic(automodes[3].alpha());
   }, 1, 0xFF);
@@ -609,12 +606,12 @@ void setup() {
   automodes[4].delayMs = 2000;
   automodes[4].hopMs = 600;
   automodes[4].bounces = 0;
-  automodes[4].fadeInMs = 0; automodes[4].holdMs = 1000; automodes[4].fadeOutMs = 0;
+  automodes[4].fadeInMs = 0; automodes[4].holdMs = 1800; automodes[4].fadeOutMs = 0;
   periodics[4] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
-    return new BlinkFiveTriangles(pentaState.color(), 1000);
+    return new BlinkFiveTriangles(1800);
   }, [] (PatternRunner &runner) {
     return ease8InOutCubic(automodes[4].alpha());
-  }, 1, 0xFF);
+  }, 1, 0x9F);
 
   for (int i = 0; i < FIVE; ++i) {
     neighborhoods.add(i, &automodes[i]);
