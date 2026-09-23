@@ -100,6 +100,16 @@ public:
   bool ring() const { return _ring; }
   // Our position counted from the alt-port end (0 = we are the alt end).
   int index() const { return _count[0]; }
+  // Position for chain-ordered effects (0 = first). In an open chain that is
+  // index(); a ring has no ends, so there it is how many hops out our alt port
+  // the lowest device ID sits (0 if that's us).
+  int position() const {
+    if (!_ring) return index();
+    uint32_t lo = lowestId();
+    if (lo == _id) return 0;
+    for (int i = 0; i < _count[0]; i++) if (_nodes[0][i].id == lo) return _nodes[0][i].hops;
+    return 0;
+  }
   const Node *nodes(int port, int &n) const { n = _count[port]; return _nodes[port]; }
   uint32_t id() const { return _id; }
   // ID of the farthest known penta on a side (the chain's end), or 0 if none.

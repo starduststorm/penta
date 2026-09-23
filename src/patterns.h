@@ -10,6 +10,7 @@
 #include "ledgraph.h"
 #include "particles.h"
 #include "remembering.h"
+#include "neighborhood.h"
 
 using Particles = ParticleSim<LED_COUNT>;
 
@@ -170,71 +171,108 @@ public:
 
 /* ------------------------------------------------------------------------------- */
 
+// Five bits chase clockwise around the circle, one per triangle point; every
+// few laps they all dip through the star along a chord and come back out two
+// points over.
+//
+// The whole animation is a pure function of the chain's shared clock (see
+// NeighborhoodClock), so every board running it shows the same thing at the
+// same moment, and a board that switches to it picks up mid-cycle in step with
+// the others. Each board delays its copy by kStaggerSlots bit-slots per chain
+// position: a one-slot delay leaves the bits visually aligned (five bits, five
+// slots) with the colors rotated one bit per board, while the dip ripples
+// down the necklace. Set kStaggerSlots to 0 for a fully simultaneous dip.
+NeighborhoodClock fiveBitsClock;
+
 class FiveBitsPattern : public Pattern, PaletteRotation<CRGBPalette256> {
-  Particles bitsFiller;
+  static constexpr int kCircleLen = 55;                       // kCircleLedsInOrder.size(), checked below
+  static constexpr int kSlot = kCircleLen / FIVE;             // circle pixels between bits, and between triangle points
+  static constexpr unsigned long kCircleStepMs = 1000 / 45;   // 45 px/s around the circle
+  static constexpr unsigned long kDipStepMs = 1000 / 40;      // 40 px/s through the star
+  static constexpr int kDipSteps = 16;                        // one star chord, triangle point to triangle point
+  static constexpr int kDipAdvance = 2 * kSlot;               // a chord comes out two triangle points further round
+  static constexpr int kLapsPerDip = 3;
+  // Circle steps per cycle: the dip covers kDipAdvance of the third lap.
+  static constexpr int kCircleSteps = kLapsPerDip * kCircleLen - kDipAdvance;
+  static constexpr int kCycleSteps = kCircleSteps + kDipSteps;
+  static constexpr unsigned long kCircleMs = kCircleSteps * kCircleStepMs;
+  static constexpr unsigned long kCycleMs = kCircleMs + kDipSteps * kDipStepMs;
 public:
-  FiveBitsPattern() : bitsFiller(ledgraph, ctx, 0, 45, 0, {}) {
+  static inline uint8_t kStaggerSlots = 1; // bit-slots of delay per chain position (0 = everyone dips together)
+private:
+  PixelIndex dipPath[FIVE][kDipSteps]; // star chord out of each triangle point, in circle-slot order
+  unsigned long lastStep = 0;          // last global step drawn, so a slow frame leaves no gaps in the tails
+  bool drawn = false;
+
+  static unsigned long stepAt(unsigned long t, bool &dipping) {
+    unsigned long cycle = t / kCycleMs, r = t % kCycleMs;
+    dipping = r >= kCircleMs;
+    unsigned long s = dipping ? kCircleSteps + (r - kCircleMs) / kDipStepMs : r / kCircleStepMs;
+    return cycle * kCycleSteps + s;
+  }
+
+  PixelIndex pixelFor(int bit, unsigned long step) const {
+    int s = step % kCycleSteps;
+    int base = bit * kSlot; // where this bit's dip lands; the next cycle's circling starts one pixel on from there
+    if (s < kCircleSteps) {
+      return kCircleLedsInOrder[(base + 1 + s) % kCircleLen];
+    }
+    int point = ((base + kCircleSteps) % kCircleLen) / kSlot; // triangle point the bit just reached, and dips from
+    return dipPath[point][s - kCircleSteps];
+  }
+
+public:
+  FiveBitsPattern() {
     updateWhileHidden = true;
     minBrightness = 20;
     maxColorJump = 100;
-    bitsFiller.spawnPixels = &kCircleLedsInOrder;
-    bitsFiller.flowRule = Particles::priority;
-    bitsFiller.followContinueTo = true;
-    // Triangle points have two clockwise edges: the circle edge and the reversed star chord (clockwise|counterstarwise).
-    // Particles now pick randomly among same-priority edges, so pin them to the circle except while dipping into the star.
-    bitsFiller.allowedPixels = &kCircleLeds;
-    for (int i = 0; i < FIVE; ++i) {
-      Particle &bit = bitsFiller.addParticle();
-      bit.px = kCircleLedsInOrder[(i * kCircleLedsInOrder.size() / FIVE) % kCircleLedsInOrder.size()];
-      bit.directions = MakeEdgeTypesQuad(EdgeType::clockwise);
+    assert(kCircleLedsInOrder.size() == kCircleLen, "circle is %u pixels", kCircleLedsInOrder.size());
+    assert(kStarwiseLeds.size() == FIVE * kDipSteps, "star is %u pixels", kStarwiseLeds.size());
+    for (int point = 0; point < FIVE; ++point) {
+      PixelIndex tip = kCircleLedsInOrder[point * kSlot];
+      auto it = std::find(kStarwiseLeds.begin(), kStarwiseLeds.end(), tip);
+      assert(it != kStarwiseLeds.end(), "triangle point %u not on the star", tip);
+      int at = it - kStarwiseLeds.begin();
+      for (int d = 0; d < kDipSteps; ++d) {
+        dipPath[point][d] = kStarwiseLeds[(at + 1 + d) % kStarwiseLeds.size()];
+      }
+      assert(dipPath[point][kDipSteps - 1] == kCircleLedsInOrder[(point * kSlot + kDipAdvance) % kCircleLen],
+             "chord from %u lands on %u", tip, dipPath[point][kDipSteps - 1]);
     }
-    bitsFiller.handleUpdateParticle = [this](Particle &bit, uint8_t index) {
-      bit.color = getShiftingPaletteColor(0xFF * index/FIVE, FIVE);
-    };
-    bitsFiller.fadeDown = 7<<8;
   }
-  
-  uint8_t loopCounter = 0;
-  bool movedOff = false;
-  bool dipping = false;
-  bool leftCircle = false;
+  ~FiveBitsPattern() {
+    fiveBitsClock.stop();
+  }
+  void setup() {
+    fiveBitsClock.start();
+  }
+
   void update() {
-    bool onCircle = kCircleLeds.count(bitsFiller.particles[pentaState.colorIndex].px);
-    if (dipping && !onCircle) {
-      leftCircle = true;
-    }
-    if (dipping && leftCircle && onCircle) {
-      // finished crossing
-      dipping = false;
-      leftCircle = false;
-      for (Particle &bit : bitsFiller.particles) {
-        bit.directions = MakeEdgeTypesQuad(EdgeType::clockwise);
-      }
-      bitsFiller.allowedPixels = &kCircleLeds;
-      bitsFiller.fadeDown = 7<<8;
-      bitsFiller.setAllSpeed(45);
-    }
-    if (bitsFiller.particles[pentaState.colorIndex].px != kTrianglePointLeds[4]) {
-      movedOff = true;
-    }
-    if (movedOff && bitsFiller.particles[pentaState.colorIndex].px == kTrianglePointLeds[4]) {
-      loopCounter++;
-      movedOff = false;
-      if (loopCounter == 3) {
-        // take a dip into the star
-        dipping = true;
-        for (Particle &bit : bitsFiller.particles) {
-          bit.directions = MakeEdgeTypesQuad(EdgeType::starwise, EdgeType::clockwise);
-        }
-        bitsFiller.allowedPixels = NULL;
-        bitsFiller.fadeDown = 3<<8;
-        bitsFiller.setAllSpeed(40);
-        loopCounter = 0;
+    // Local timeline: the shared phase, delayed by our chain position. Offset
+    // by whole cycles rather than subtracting so the unsigned math never wraps.
+    unsigned long stagger = (unsigned long)kStaggerSlots * fiveBitsClock.position() * kSlot * kCircleStepMs;
+    unsigned long t = fiveBitsClock.phase() + 256 * kCycleMs - stagger;
+    bool dipping;
+    unsigned long step = stepAt(t, dipping);
+
+    ctx.fadeToBlackBy16(dipping ? 3 << 8 : 7 << 8);
+
+    // Catch up any steps a slow frame skipped so the tails stay continuous,
+    // but not after a resync jump.
+    long behind = drawn ? (long)(step - lastStep) : 0;
+    if (behind < 0 || behind > 4) behind = 0;
+    for (long back = behind - 1; back >= 0; --back) {
+      for (int bit = 0; bit < FIVE; ++bit) {
+        ctx.point(pixelFor(bit, step - back), getShiftingPaletteColor(0xFF * bit / FIVE, FIVE), blendBrighten);
       }
     }
-    bitsFiller.update();
-    // much better synchronization idea:
-    // bit position should be set predictably on pattern start based on millis()
+    if (behind == 0) {
+      for (int bit = 0; bit < FIVE; ++bit) {
+        ctx.point(pixelFor(bit, step), getShiftingPaletteColor(0xFF * bit / FIVE, FIVE), blendBrighten);
+      }
+    }
+    lastStep = step;
+    drawn = true;
   }
 
   const char *description() {

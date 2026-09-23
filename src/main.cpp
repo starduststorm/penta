@@ -84,6 +84,7 @@ AmplitudeReceiver *ambientSound = NULL;
 #undef FASTLED_USE_PROGMEM
 #define FASTLED_USE_PROGMEM 1
 #define FASTLED_USE_GLOBAL_BRIGHTNESS 1
+#define kDefaultBrightness 20
 // #define FASTLED_ALLOW_INTERRUPTS 0
 #include <functional>
 #include <FastLED.h>
@@ -532,6 +533,7 @@ void setup() {
   topology.begin(deviceId, &link0, &link1);
   neighborhoods.begin(&topology, &link0, &link1);
   neighborhoods.onEnabledChanged(automodesChanged);
+  neighborhoods.addClock(&fiveBitsClock); // FiveBitsPattern keeps time with the chain
   fwPush.begin(&topology, &link0, &link1);
 
   verifyPioLayout();
@@ -567,7 +569,7 @@ void setup() {
   automodes[1].periodMs = 10 * 1000;
   automodes[1].delayMs = 500;
   automodes[1].hopMs = 320;
-  automodes[1].bounces = 1;
+  automodes[1].bounces = 0;
   automodes[1].fadeInMs = 300; automodes[1].holdMs = 0; automodes[1].fadeOutMs = 300;
   periodics[1] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkPixelSet(kStarwiseLeds, pentaState.color());
@@ -579,7 +581,7 @@ void setup() {
   automodes[2].periodMs = 15 * 1000;
   automodes[2].delayMs = 1000;
   automodes[2].hopMs = 320;
-  automodes[2].bounces = 1;
+  automodes[2].bounces = 0;
   automodes[2].fadeInMs = 150; automodes[2].holdMs = 650; automodes[2].fadeOutMs = 150;
   periodics[2] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new StarwisePattern(650);
@@ -591,7 +593,7 @@ void setup() {
   automodes[3].periodMs = 18 * 1000;
   automodes[3].delayMs = 1500;
   automodes[3].hopMs = 320;
-  automodes[3].bounces = 1;
+  automodes[3].bounces = 0;
   automodes[3].fadeInMs = 300; automodes[3].holdMs = 0; automodes[3].fadeOutMs = 300;
   periodics[3] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     // TODO: it would be nice to pull the palette from the running pattern here, but we don't know if it inherits from PaletteRotation bc not all Patterns do
@@ -606,7 +608,7 @@ void setup() {
   automodes[4].periodMs = 59 * 1000;
   automodes[4].delayMs = 2000;
   automodes[4].hopMs = 600;
-  automodes[4].bounces = 1;
+  automodes[4].bounces = 0;
   automodes[4].fadeInMs = 0; automodes[4].holdMs = 1000; automodes[4].fadeOutMs = 0;
   periodics[4] = patternManager.setupConditionalRunner([] (PatternRunner &runner) {
     return new BlinkFiveTriangles(pentaState.color(), 1000);
@@ -742,6 +744,7 @@ void loop() {
       case '0': case '1': case '2': case '3': case '4':  // start that automode's wave from here
         neighborhoods.start(c - '0'); break;
       case 'N': neighborhoods.logState(); break;         // print automode/neighborhood state
+      case 'M': chooseMode((pentaState.arrowIndex + 1) % FIVE); break; // next pattern, as if the next arrow were tapped
       case 'U': fwPush.pushAll(); break;                 // push our firmware to a neighbor
       case 'P': fwPush.pullAny(); break;                 // ask a neighbor to push its firmware to us
       case 'R': logf("rebooting"); Serial.flush(); rp2040.reboot(); break;
@@ -750,15 +753,15 @@ void loop() {
     }
   }
 
-  // Demo traffic: once linked, send a heartbeat on each port every second.
-  static unsigned long lastHeartbeat = 0;
-  if (millis() - lastHeartbeat >= 1000) {
-    lastHeartbeat = millis();
-    if (link0.isLinked()) link0.send("hello-p0");
-    if (link1.isLinked()) link1.send("hello-p1");
-  }
+  // // Demo traffic: once linked, send a heartbeat on each port every second.
+  // static unsigned long lastHeartbeat = 0;
+  // if (millis() - lastHeartbeat >= 1000) {
+  //   lastHeartbeat = millis();
+  //   if (link0.isLinked()) link0.send("hello-p0");
+  //   if (link1.isLinked()) link1.send("hello-p1");
+  // }
 
-  FastLED.setBrightness(30);
+  FastLED.setBrightness(kDefaultBrightness);
   patternManager.loop();
   controls.update();
 

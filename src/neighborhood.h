@@ -32,6 +32,7 @@
 // Wire payloads (inside SerialLink DATA frames):
 //   ['W', slot, hop, bouncesLeft]  a wave; hop counts boards visited so far
 //   ['M', enabledBits]             chain-wide enable bitfield (slot i = bit i)
+//   ['C', ...]                     shared pattern clocks; see NeighborhoodClock below
 struct PatternNeighborhood {
   const char *name = "";
 
@@ -78,6 +79,181 @@ struct PatternNeighborhood {
   unsigned long _nextTrainAt = 0;
 };
 
+// A phase clock shared chain-wide by every board running the same pattern.
+// A pattern that draws itself as a pure function of phase() then plays in
+// lockstep on every board (optionally staggered by chain position), and a
+// board that starts the pattern falls into step with the ones already
+// running it instead of starting from zero.
+//
+// Timekeeping is by device ID: among the boards running the pattern, the
+// lowest ID announces its phase once a second and everyone else adopts it
+// and stays quiet. Only the timekeeper talks, so the wire cost is one small
+// frame per second per chain. If the timekeeper leaves, the next-lowest ID
+// notices the silence and takes over with the phase it had already adopted,
+// so the timeline never jumps.
+//
+// Joining: a fresh instance (or one that has been alone for a while) is
+// "provisional": its phase is a placeholder. It announces itself right away,
+// which makes the timekeeper answer immediately; the newcomer adopts the
+// first established phase it hears no matter whose ID is lower, and only then
+// competes for timekeeping. A newcomer with the lowest ID therefore takes
+// over timekeeping *with the existing phase*, and nothing visibly moves.
+// Established boards ignore the phase in provisional announcements.
+//
+// Hop latency: a frame is forwarded the moment it is read, so each hop costs
+// the wire (well under a millisecond) plus however long the frame sat in the
+// receiver's UART buffer waiting for its next loop -- on average half that
+// board's loop period. Every receiver adds its own share to a running total
+// carried in the frame, so the estimate tracks the chain's actual load.
+//
+// Wire payload (inside a SerialLink DATA frame):
+//   ['C', clockId, hops, flags, phase(4), origin(4), lagMs]   flags bit 0 = provisional
+class NeighborhoodClock {
+public:
+  static constexpr uint8_t kMsgClock = 'C';
+  static constexpr uint8_t kFlagProvisional = 1;
+  static constexpr uint8_t kMaxHops = 250;
+  static constexpr unsigned long kAnnounceMs = 1000;    // timekeeper's announce period
+  static constexpr unsigned long kSeniorStaleMs = 3500; // no announcement for this long: timekeeper is gone
+  static constexpr unsigned long kReplyMinMs = 100;     // rate limit for answering newcomers
+  static constexpr unsigned long kLonelyMs = 20000;     // alone in the chain this long: back to provisional
+  static constexpr unsigned long kWireMs = 1;           // per-hop transit not covered by the receiver's loop wait
+
+  void begin(uint8_t id, ChainTopology *topo, SerialLink *port0, SerialLink *port1) {
+    _id = id;
+    _topo = topo;
+    _link[0] = port0;
+    _link[1] = port1;
+    _origin = _companySeen = millis();
+  }
+
+  // The pattern is running here: keep time with the chain. Restarting within
+  // the same session keeps the timeline, so re-running the pattern doesn't jump.
+  void start() {
+    if (_running) return;
+    _running = true;
+    if (!_everStarted) { _origin = millis(); _everStarted = true; }
+    announce();
+  }
+  void stop() {
+    _running = false;
+    _haveSenior = false;
+  }
+  bool running() const { return _running; }
+  bool joined() const { return _joined; }
+  bool keeper() const { return _running && !_haveSenior; }
+  void setQuiet(bool q) { _quiet = q; }
+
+  // Milliseconds on the shared timeline. Wraps with millis(); patterns take it
+  // modulo their period.
+  unsigned long phase() const { return millis() - _origin; }
+  // Chain position, for effects that stagger along the necklace.
+  int position() const { return _topo ? _topo->position() : 0; }
+
+  void update() {
+    const unsigned long now = millis();
+    if (_topo->total() > 1) {
+      _companySeen = now;
+    } else if (_joined && now - _companySeen >= kLonelyMs) {
+      // Alone long enough that whatever we meet next has the better claim.
+      _joined = false;
+      logf("clock[%u]: alone for a while, phase is provisional again", _id);
+    }
+    _lastUpdate = now;
+    if (!_running) return;
+    if (_haveSenior && now - _seniorSeen >= kSeniorStaleMs) {
+      _haveSenior = false;
+      logf("clock[%u]: timekeeper 0x%08lx went quiet, taking over", _id, (unsigned long)_seniorId);
+    }
+    if (!_haveSenior && !_quiet && now - _lastAnnounce >= kAnnounceMs) announce();
+  }
+
+  // Feed every DATA payload received on `port`. Returns true if consumed.
+  bool onData(int port, const uint8_t *d, uint8_t n) {
+    if (n < 13 || d[0] != kMsgClock || d[1] != _id) return false;
+    uint8_t hops = d[2], flags = d[3];
+    uint32_t theirPhase = get32(d + 4), origin = get32(d + 8);
+    if (origin == _topo->id()) return true; // ours, back around a ring
+    if (hops >= kMaxHops) return true;
+    hops++;
+    const unsigned long now = millis();
+    // The frame landed somewhere in the loop that just went by; call it halfway.
+    unsigned long lag = d[12] + kWireMs + (now - _lastUpdate) / 2;
+    if (lag > 255) lag = 255;
+    if (_running) {
+      const bool provisional = flags & kFlagProvisional;
+      const bool lower = origin < _topo->id();
+      // An established lower ID keeps time for us. If our own phase is only a
+      // placeholder, the first established phase we hear is the one, and among
+      // placeholders the lower ID's stands. A placeholder never displaces an
+      // established phase.
+      const bool adopt = provisional ? (!_joined && lower) : (lower || !_joined);
+      if (adopt) {
+        unsigned long theirs = theirPhase + lag;
+        long delta = (long)(theirs - phase());
+        _origin = now - theirs;
+        if (!_joined || delta > 3 || delta < -3) {
+          logf("clock[%u]: adopted phase %lu from 0x%08lx (%u hop%s, %lu ms lag, %s, moved %ld ms)", _id, theirs,
+               (unsigned long)origin, hops, hops == 1 ? "" : "s", lag, provisional ? "provisional" : "established", delta);
+        }
+        _joined = true;
+      }
+      if (lower && !provisional) {
+        _haveSenior = true;
+        _seniorSeen = now;
+        _seniorId = origin;
+      } else if (provisional && !_haveSenior && now - _lastAnnounce >= kReplyMinMs) {
+        announce(); // a newcomer is asking and we keep time here: answer right away
+      }
+    }
+    int other = port ^ 1;
+    if (_link[other]->isLinked()) send(other, hops, flags, theirPhase, origin, (uint8_t)lag);
+    return true;
+  }
+
+  void logState() const {
+    logf("  clock[%u]: %s, phase %lu, %s%s, position %d", _id, _running ? "running" : "idle", phase(),
+         _joined ? "established" : "provisional",
+         _running ? (_haveSenior ? " (following)" : " (keeping time)") : "", position());
+  }
+
+private:
+  uint8_t _id = 0;
+  ChainTopology *_topo = nullptr;
+  SerialLink *_link[2] = {nullptr, nullptr};
+  unsigned long _origin = 0;       // local millis() at which phase() was 0
+  bool _running = false;
+  bool _everStarted = false;
+  bool _joined = false;            // phase came from the chain (or someone adopted ours)
+  bool _haveSenior = false;        // a lower ID is announcing; we stay quiet
+  bool _quiet = false;
+  uint32_t _seniorId = 0;
+  unsigned long _seniorSeen = 0;
+  unsigned long _lastAnnounce = 0;
+  unsigned long _companySeen = 0;
+  unsigned long _lastUpdate = 0;
+
+  static uint32_t get32(const uint8_t *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+  }
+  static void put32(uint8_t *p, uint32_t v) { p[0] = v; p[1] = v >> 8; p[2] = v >> 16; p[3] = v >> 24; }
+
+  void announce() {
+    _lastAnnounce = millis();
+    uint8_t flags = _joined ? 0 : kFlagProvisional;
+    for (int p = 0; p < 2; p++) send(p, 0, flags, phase(), _topo->id(), 0);
+  }
+
+  void send(int port, uint8_t hops, uint8_t flags, uint32_t phase, uint32_t origin, uint8_t lag) {
+    if (!_link[port]->isLinked()) return;
+    uint8_t p[13] = {kMsgClock, _id, hops, flags};
+    put32(p + 4, phase);
+    put32(p + 8, origin);
+    p[12] = lag;
+    _link[port]->send(p, sizeof(p));
+  }
+};
+
 class PatternNeighborhoods {
 public:
   using EnabledCallback = void (*)(uint8_t enabledBits);
@@ -85,6 +261,7 @@ public:
   static constexpr uint8_t kMsgWave = 'W';
   static constexpr uint8_t kMsgModes = 'M';
   static constexpr int kMaxSlots = 8;
+  static constexpr int kMaxClocks = 4;
   static constexpr int kMaxPending = 8;
   static constexpr uint8_t kMaxHops = 250; // hard stop for a wave that somehow never ends
 
@@ -103,14 +280,26 @@ public:
   }
   PatternNeighborhood *slot(uint8_t s) const { return s < kMaxSlots ? _slots[s] : nullptr; }
 
+  // Register a shared clock (see NeighborhoodClock). The engine keeps the
+  // pointer and gives it the links and topology; it must outlive the engine.
+  void addClock(NeighborhoodClock *clock) {
+    if (_clockCount >= kMaxClocks) return;
+    clock->begin(_clockCount, _topo, _link[0], _link[1]);
+    _clocks[_clockCount++] = clock;
+  }
+
   // Called whenever the enable bits change, from here or from the chain.
   void onEnabledChanged(EnabledCallback cb) { _onEnabled = cb; }
 
   // Pause launching *new* waves (in-flight ones still hop along).
-  void setQuiet(bool q) { _quiet = q; }
+  void setQuiet(bool q) {
+    _quiet = q;
+    for (int c = 0; c < _clockCount; c++) _clocks[c]->setQuiet(q);
+  }
 
   void update() {
     const unsigned long now = millis();
+    for (int c = 0; c < _clockCount; c++) _clocks[c]->update();
 
     // Deliver hops whose delay has elapsed.
     for (int i = 0; i < kMaxPending; i++) {
@@ -144,6 +333,9 @@ public:
 
   // Feed every DATA payload received on `port`. Returns true if consumed.
   bool onData(int port, const uint8_t *d, uint8_t n) {
+    for (int c = 0; c < _clockCount; c++) {
+      if (_clocks[c]->onData(port, d, n)) return true;
+    }
     if (n >= 2 && d[0] == kMsgModes) {
       onModes(port, d[1]);
       return true;
@@ -236,6 +428,7 @@ public:
            s, nh->name, nh->enabled ? "on" : "off", nh->periodMs, nh->delayMs, nh->hopMs, nh->bounces,
            nh->repeat, nh->repeatDistance, nh->fadeInMs, nh->holdMs, nh->fadeOutMs, nh->alpha());
     }
+    for (int c = 0; c < _clockCount; c++) _clocks[c]->logState();
   }
 
 private:
@@ -249,6 +442,8 @@ private:
   ChainTopology *_topo = nullptr;
   SerialLink *_link[2] = {nullptr, nullptr};
   PatternNeighborhood *_slots[kMaxSlots] = {nullptr};
+  NeighborhoodClock *_clocks[kMaxClocks] = {nullptr};
+  int _clockCount = 0;
   Pending _pending[kMaxPending];
   EnabledCallback _onEnabled = nullptr;
   bool _quiet = false;
