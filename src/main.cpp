@@ -1,6 +1,7 @@
  // penta main.cpp
 #define DEBUG 0
 #define WAIT_FOR_SERIAL 0
+#define LOG_BOOT_CAPTURE_BYTES 2048 // keep the boot log for HWTEST
 
 #define FIVE (5)
 
@@ -142,6 +143,8 @@ static void onLink1Data(const uint8_t *d, uint8_t n) { onLinkData("link1", MAIN_
 #include "patterns.h"
 
 #include <remembering.h>
+#include <updating.h>
+#include <fw_version.h> // FW_VERSION, generated from the fw-v* tag by lib/dustlib/scripts/fw_version.py
 PersistentStorage storage(PentaState::dataSize());
 
 /////////////////////
@@ -414,8 +417,12 @@ void chooseAutomode(int mode) {
 }
 
 #if HARDWARE_VERSION >= 2
+NewerGlowUpdater *updater;
+
 static bool selectPulledLow = false; // result of the boot-time R15 check, for the 'I' command
 #endif
+
+#include "hwtest.h" // HWTEST self-test for scripts/hwtest; needs everything above
 
 void setup() {
   init_serial();
@@ -437,7 +444,7 @@ void setup() {
   uint32_t deviceId = (uint32_t)uid.id[0] | ((uint32_t)uid.id[1] << 8) |
                       ((uint32_t)uid.id[2] << 16) | ((uint32_t)uid.id[3] << 24);
 
-  logf("penta build %lu (%s %s)", (unsigned long)BUILD_EPOCH, __DATE__, __TIME__);
+  logf("penta %s build %lu (%s %s)", FW_VERSION, (unsigned long)BUILD_EPOCH, __DATE__, __TIME__);
 
 #if HARDWARE_VERSION >= 2
   // Sanity-check the mux select pulldown (R15): with our weak internal pull-up
@@ -512,8 +519,6 @@ void setup() {
 
   FastLED.addLeds<WS2812B, LED_DATA, GRB>(ctx.leds, LED_COUNT).setCorrection(TypicalSMD5050);
 
-  ambientSound = new AmplitudeReceiver(audioInput);
-
   // Pin the swapped-UART PIO state machines now that touch (pio1 SM1) and
   // FastLED (pio0 SM0) have claimed theirs. Holds the claims for the whole
   // session so PDM/FastLED/touch placement stays deterministic.
@@ -521,9 +526,11 @@ void setup() {
   port1Swapped.reserve();
 
   // Start the mic last so its PIO state machine is the one left over (pio0 SM3);
-  // starting it earlier shifts every other claim. Runs continuously so the FFT's
-  // rolling window is always warm.
+  // starting it earlier shifts every other claim (AmplitudeReceiver subscribes in
+  // its constructor, so it counts as starting the mic). Runs continuously so the
+  // FFT's rolling window is always warm.
   audioInput.subscribe();
+  ambientSound = new AmplitudeReceiver(audioInput);
 
   // The links can start now that their PIO halves are reserved. Both engines
   // (hw UART + PIO) run for the life of the link; negotiation only swaps pin
@@ -642,6 +649,13 @@ void setup() {
 
   fc.loop();
 
+  updater = new NewerGlowUpdater("penta", FW_VERSION, xstr(HARDWARE_VERSION), [](void) {
+    patternManager.runOneShotDrawing([](DrawingContext &ctx, unsigned long elapsed) {
+      ctx.leds.fill_solid(elapsed % 300 < 150 ? CRGB(0, 0, 80) : CRGB::Black); // three blue flashes
+      return elapsed < 900;
+    }, 0xFE, 0xFF);
+  });
+
   setupDoneTime = millis();
   logf("setup done");
 }
@@ -723,30 +737,48 @@ void loop() {
     updatePulseShown = false;
   }
 
-  // Single-letter serial console commands.
-  while (Serial.available()) {
-    int c = Serial.read();
-    switch (c) {
-      case 'T': topology.logState(); break;              // print chain topology
-      case 'I':                                          // boot-time facts, on demand
-        logf("penta build %lu (%s %s)", (unsigned long)BUILD_EPOCH, __DATE__, __TIME__);
+  // Serial console, one command per line (like motionhexa's): the Newer Glow updater's IDENTIFY / BLINK,
+  // "HWTEST [verdict]" (no verdict starts the self-test, PASS/WARN/FAIL shows the host's), and the bench commands below.
+  char *serialLine = readSerialLine();
+  if (serialLine) {
+    updater->loop(serialLine);
 #if HARDWARE_VERSION >= 2
-        logf("usb mux select pulldown R15: %s", selectPulledLow ? "present" : "MISSING");
-        logf("usb mux: %s (host %s)", usbMux.stateName(), usbMux.hostPresent() ? "present" : "absent");
+    if (strncmp(serialLine, kHWTestCommand, strlen(kHWTestCommand)) == 0) {
+      const char *arg = serialLine + strlen(kHWTestCommand);
+      while (*arg == ' ') ++arg;
+      hwTest.command(arg);
+    }
 #endif
-        logf("mic streaming: %s", audioInput.isStreaming() ? "yes" : "no");
-        verifyPioLayout();
-        break;
-      case 'W': neighborhoods.start(0); break;           // start an automode-0 wave from here
-      case '0': case '1': case '2': case '3': case '4':  // start that automode's wave from here
-        neighborhoods.start(c - '0'); break;
-      case 'N': neighborhoods.logState(); break;         // print automode/neighborhood state
-      case 'M': chooseMode((pentaState.arrowIndex + 1) % FIVE); break; // next pattern, as if the next arrow were tapped
-      case 'U': fwPush.pushAll(); break;                 // push our firmware to a neighbor
-      case 'P': fwPush.pullAny(); break;                 // ask a neighbor to push its firmware to us
-      case 'R': logf("rebooting"); Serial.flush(); rp2040.reboot(); break;
-      case 'B': logf("rebooting to bootloader"); Serial.flush(); rp2040.rebootToBootloader(); break;
-      default: break;
+    if (strcmp(serialLine, "TOPOLOGY") == 0) {
+      topology.logState();
+    } else if (strcmp(serialLine, "HW") == 0) { // boot-time facts, on demand
+      logf("penta %s build %lu (%s %s)", FW_VERSION, (unsigned long)BUILD_EPOCH, __DATE__, __TIME__);
+#if HARDWARE_VERSION >= 2
+      logf("usb mux select pulldown R15: %s", selectPulledLow ? "present" : "MISSING");
+      logf("usb mux: %s (host %s)", usbMux.stateName(), usbMux.hostPresent() ? "present" : "absent");
+#endif
+      logf("mic streaming: %s%s", audioInput.isStreaming() ? "yes" : "no", audioInput.selectReleased() ? " (SELECT released: v2 floating mic ground)" : "");
+      verifyPioLayout();
+    } else if (strcmp(serialLine, "WAVE") == 0 || strncmp(serialLine, "WAVE ", 5) == 0) { // start automode n's wave from here (default 0)
+      neighborhoods.start(serialLine[4] ? constrain(atoi(serialLine + 5), 0, 4) : 0);
+    } else if (strcmp(serialLine, "NEIGHBORS") == 0) {
+      neighborhoods.logState();
+    } else if (strcmp(serialLine, "PATTERN") == 0) { // next pattern, as if the next arrow were tapped
+      chooseMode((pentaState.arrowIndex + 1) % FIVE);
+    } else if (strncmp(serialLine, "PATTERN ", 8) == 0) {
+      chooseMode(constrain(atoi(serialLine + 8), 0, FIVE - 1));
+    } else if (strcmp(serialLine, "PUSH") == 0) { // push our firmware to a neighbor
+      fwPush.pushAll();
+    } else if (strcmp(serialLine, "PULL") == 0) { // ask a neighbor to push its firmware to us
+      fwPush.pullAny();
+    } else if (strcmp(serialLine, "REBOOT") == 0) {
+      logf("rebooting");
+      Serial.flush();
+      rp2040.reboot();
+    } else if (strcmp(serialLine, "BOOTSEL") == 0) {
+      logf("rebooting to bootloader");
+      Serial.flush();
+      rp2040.rebootToBootloader();
     }
   }
 
@@ -759,6 +791,11 @@ void loop() {
   // }
 
   FastLED.setBrightness(kDefaultBrightness);
+#if HARDWARE_VERSION >= 2
+  if (hwTest.active()) {
+    hwTest.loop(); // the self-test owns the pixels for its few seconds; the power gate and show below still run
+  } else
+#endif
   patternManager.loop();
   controls.update();
 

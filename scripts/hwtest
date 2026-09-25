@@ -1,0 +1,519 @@
+#!/usr/bin/env python3
+"""Unit intake: flash every board that shows up in BOOTSEL, then run the firmware's HWTEST self-test on every penta that
+shows up on USB serial, judge it, and log it per chip serial number. 
+
+    scripts/hwtest v2                build env v2, flash boards as they appear in bootloader mode, test units as they boot
+    scripts/hwtest v2 --no-build     reuse .pio/build/v2/firmware.uf2
+    scripts/hwtest --no-flash        only test (units already running a firmware with HWTEST)
+    scripts/hwtest --new-only ...    leave alone the units that are already plugged in when this starts
+    scripts/hwtest v2 --reflash      also send the units that are already running to the bootloader (BOOTSEL serial command),
+                                     so they get this build and then the test
+    scripts/hwtest ... --for 60      stop after that many seconds (and print today's report) instead of waiting for ^C
+    scripts/hwtest report            the spread across units: what failed on how many, de-duplicated by serial number
+    scripts/hwtest report --all      ...counting every run rather than each unit's latest
+
+What a run looks like on the unit: solid red / green / blue / white right after it boots (watch for dead pixels, or the
+chain going dark past a bad joint), then dark (the panel is powered off so the mic's own floor gets measured and the
+touch pads' discharge times are taken without the pixel data stream around). About 4s. No operator step: don't touch
+the pads while it runs. When the verdict is in, the center pentagon blinks green (pass), yellow (warnings) or red
+(fail) for a few seconds. The firmware (src/hwtest.h)
+only measures and prints "HWTEST <section> key=value" lines; the limits live here (LIMITS / judge()), so they can be
+tuned against the accumulated log without reflashing anything. Every run appends one JSON record to
+scripts/hwtest_results/results.jsonl and its raw transcript to scripts/hwtest_results/raw/.
+
+Units in a coupled chain: only one board per chain may be on USB (the coupler bridges their 5V rails), and the 1200-baud
+bootloader touch has killed a board's USB before, so --reflash uses the firmware's BOOTSEL command instead.
+"""
+
+import argparse, datetime, json, os, re, shutil, statistics, struct, subprocess, sys, threading, time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+PROJECT = os.path.dirname(HERE)  # platformio.ini, .pio/
+try:
+    import serial
+    from serial.tools import list_ports
+except ImportError:  # pyserial lives in platformio's environment
+    penv = os.path.expanduser("~/.platformio/penv/bin/python")
+    if os.path.exists(penv) and os.path.realpath(sys.executable) != os.path.realpath(penv):
+        os.execv(penv, [penv] + sys.argv)
+    sys.exit("hwtest: needs pyserial (pip install pyserial)")
+
+RESULTS_DIR = os.path.join(HERE, "hwtest_results")
+RESULTS = os.path.join(RESULTS_DIR, "results.jsonl")
+USB_PRODUCT = "penta"        # board_build.arduino.earlephilhower.usb_product
+BOOT_SETTLE_S = 0.5          # from the serial port appearing to sending HWTEST (a port that isn't ready yet gets one retry)
+TEST_TIMEOUT_S = 12.0        # dark + the color sweep + the pad measurement, plus slack
+TOUCH_PADS = 5
+POLL_S = 0.5
+GONE_TIMEOUT_S = 8.0
+
+LIMITS = dict(
+    mic_samples=4000,            # ~4s at 8kHz should give far more than this
+    mic_dark_samples=1000,       # the panel-off part of the dark phase alone
+    mic_rms_silent=2.0,          # below this the mic is probably not producing anything real
+    mic_rms_saturated=12000, mic_mean_abs=8000,
+    # pad discharge time in ns (from floating the charged pad until the internal pulldown has it low; the RC is a few
+    # hundred ns): an open pad reads short, one shorted to ground reads 0, one shorted high or being touched reads long.
+    # A finger adds several times the pad's own capacitance. Tune against the spread.
+    pad_med_ns=(400, 1200),      # untouched pads on the first unit: 640-840 depending on the pad
+    pad_spread_ns=300,           # p90 - min beyond this means the pad got touched (or disturbed) for a good part of the reps
+    pad_rejected=8,              # reps past the cap, over all pads, before it's worth a look
+)
+BOOT_LOG_BAD = re.compile(r"assert|fail|error|retry|stall|timeout|invalid|not found|no free|missing", re.I)
+MUX_STATES = {0: "usb", 1: "probe", 2: "link"}  # UsbMuxArbiter::State
+
+print_lock = threading.Lock()
+
+
+def log(msg):
+    with print_lock:
+        print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
+
+
+# ---- flashing ------------------------------------------------------------------------------------
+
+def find_pio():
+    for cand in ("pio", "platformio"):
+        p = shutil.which(cand)
+        if p:
+            return p
+    p = os.path.expanduser("~/.platformio/penv/bin/pio")
+    if os.access(p, os.X_OK):
+        return p
+    sys.exit("hwtest: can't find the `pio` executable (PlatformIO)")
+
+
+def resolve_image(target, build):
+    if target.lower().endswith(".uf2"):
+        if not os.path.isfile(target):
+            sys.exit(f"hwtest: no such file: {target}")
+        return os.path.abspath(target)
+    uf2 = os.path.join(PROJECT, ".pio", "build", target, "firmware.uf2")
+    if build:
+        # built once up front: scripts/build_epoch.py stamps a new build epoch on every build, and units with different
+        # epochs push firmware around the chain for nothing
+        log(f"building env `{target}`")
+        rc = subprocess.call([find_pio(), "run", "-e", target], cwd=PROJECT)
+        if rc != 0:
+            sys.exit(f"hwtest: build of env `{target}` failed (exit {rc})")
+    if not os.path.isfile(uf2):
+        sys.exit(f"hwtest: {uf2} does not exist" + ("" if build else " (drop --no-build to build it)"))
+    return uf2
+
+
+# UF2 family ids (pico-sdk uf2/boot/uf2.h). The bootloader silently drops every block whose family it doesn't accept, so an
+# image for the wrong chip copies "successfully" and does nothing.
+UF2_FAMILIES = {0xe48bff56: "rp2040", 0xe48bff59: "rp2350-arm-s", 0xe48bff5a: "rp2350-riscv", 0xe48bff5b: "rp2350-arm-ns",
+                0xe48bff57: "absolute", 0xe48bff58: "data"}
+BOARD_ACCEPTS = {"RPI-RP2": {"rp2040"}, "RP2350": {"rp2350-arm-s", "rp2350-riscv", "rp2350-arm-ns"}}
+
+
+def image_families(image):
+    """chip families the .uf2 was built for (ignoring the chip-agnostic absolute/data blocks)"""
+    families = set()
+    with open(image, "rb") as f:
+        while len(block := f.read(512)) == 512:
+            magic0, magic1, flags, _, _, _, _, family = struct.unpack_from("<8I", block)
+            if (magic0, magic1) != (0x0A324655, 0x9E5D5157):
+                sys.exit(f"hwtest: {image} is not a UF2 file")
+            if flags & 0x2000:
+                families.add(UF2_FAMILIES.get(family, hex(family)))
+    return families - {"absolute", "data"}
+
+
+def board_id(vol):
+    try:
+        with open(os.path.join(vol, "INFO_UF2.TXT"), "r", errors="replace") as f:
+            fields = dict(line.split(":", 1) for line in f.read().splitlines() if ":" in line)
+        return fields.get("Board-ID", "").strip()
+    except OSError:
+        return ""
+
+
+def image_fits(vol, families):
+    """False (and says so) when this bootloader would ignore the image. Unknown boards get the benefit of the doubt."""
+    accepts = BOARD_ACCEPTS.get(board_id(vol))
+    if accepts is None or not families or families & accepts:
+        return True
+    log(f"{vol}: NOT flashing -- this is a {board_id(vol)} board and the image is built for {'/'.join(sorted(families))}")
+    return False
+
+
+def bootloader_volumes():
+    user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
+    found = []
+    for root in ["/Volumes", f"/media/{user}", f"/run/media/{user}", "/media", "/mnt"]:
+        try:
+            for name in os.listdir(root):
+                if os.path.isfile(os.path.join(root, name, "INFO_UF2.TXT")):
+                    found.append(os.path.join(root, name))
+        except OSError:
+            pass
+    return sorted(found)
+
+
+def flash(vol, image):
+    size, written = os.path.getsize(image), 0
+    log(f"{vol}: writing {os.path.basename(image)} ({size // 1024} KiB)")
+    try:
+        with open(image, "rb") as src, open(os.path.join(vol, os.path.basename(image)), "wb") as dst:
+            while chunk := src.read(512 * 1024):
+                dst.write(chunk)
+                written += len(chunk)
+                dst.flush()
+            os.fsync(dst.fileno())
+    except OSError as e:
+        if written < size:  # the board reboots on the last block and pulls the volume; only a short write is a failure
+            log(f"{vol}: write failed after {written}/{size} bytes: {e}")
+            return False
+    deadline = time.monotonic() + GONE_TIMEOUT_S
+    while time.monotonic() < deadline:
+        if not os.path.isdir(vol):
+            log(f"{vol}: flashed, board rebooted")
+            return True
+        time.sleep(0.2)
+    log(f"{vol}: still mounted after {GONE_TIMEOUT_S:.0f}s -- the bootloader ignored the image (wrong chip family?)")
+    return False
+
+
+def firmware_identity(image):
+    ident = {}
+    try:
+        rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=PROJECT, capture_output=True, text=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "src", "lib"], cwd=PROJECT, capture_output=True, text=True).stdout.strip()
+        ident["git"] = rev + ("+dirty" if dirty else "")
+    except OSError:
+        pass
+    if image:
+        ident["image"] = os.path.relpath(image, PROJECT)
+        ident["image_built"] = datetime.datetime.fromtimestamp(os.path.getmtime(image)).isoformat(timespec="seconds")
+    return ident
+
+
+# ---- testing --------------------------------------------------------------------------------------------------------
+
+def unit_ports():
+    return {p.device: p for p in list_ports.comports() if (p.product or "") == USB_PRODUCT}
+
+
+def parse_value(v):
+    try:
+        return int(v, 0)
+    except ValueError:
+        try:
+            return float(v)
+        except ValueError:
+            return v
+
+
+def open_port(port):
+    """(serial, error). macOS has refused a CDC port reopened right after another process let go of it, so one retry."""
+    for attempt in range(2):
+        try:
+            return serial.Serial(port, 115200, timeout=0.25), None
+        except (serial.SerialException, OSError) as e:
+            error = f"can't open port: {e}"
+            time.sleep(1.0)
+    return None, error
+
+
+def run_test(ser):
+    """Returns (sections, boot_lines, transcript, error). sections: {"mic": {...}, "touch": {...}, ...}"""
+    sections, boot, transcript = {}, [], []
+    try:
+        ser.reset_input_buffer()
+        ser.write(b"\nHWTEST\n")
+        deadline, buf = time.monotonic() + TEST_TIMEOUT_S, b""
+        while time.monotonic() < deadline:
+            buf += ser.read(4096)
+            *lines, buf = buf.split(b"\n")
+            for raw in lines:
+                line = raw.decode("utf8", "replace").strip()
+                if not line.startswith("HWTEST "):
+                    continue
+                transcript.append(line)
+                _, section, *rest = line.split(" ", 2)
+                if section == "BOOT":
+                    boot.append(rest[0] if rest else "")
+                    continue
+                sections[section.lower()] = {k: parse_value(v) for k, v in (kv.split("=", 1) for kv in (rest[0].split() if rest else []) if "=" in kv)}
+                if section == "END":
+                    return sections, boot, transcript, None
+        return sections, boot, transcript, "no HWTEST response (firmware without HWTEST?)" if not transcript else "test did not finish"
+    except (serial.SerialException, OSError) as e:
+        return sections, boot, transcript, f"port error: {e}"
+
+
+def show_verdict(ser, verdict):
+    """the unit blinks its center pentagon in the verdict's color; it acks with an HWTEST SHOW line"""
+    try:
+        ser.write(f"\nHWTEST {verdict}\n".encode())
+        deadline, buf = time.monotonic() + 1.0, b""
+        while time.monotonic() < deadline:
+            buf += ser.read(4096)
+            if b"HWTEST SHOW" in buf:
+                return True
+    except (serial.SerialException, OSError):
+        pass
+    return False
+
+
+def judge(s, boot):
+    """(failures, warnings) as lists of (flag, detail). Flags are stable names: the report counts them across units."""
+    fail, warn = [], []
+    rng = lambda v, lim: isinstance(v, (int, float)) and lim[0] <= v <= lim[1]
+
+    bad_boot = [l for l in boot if BOOT_LOG_BAD.search(l)]
+    if bad_boot:
+        warn.append(("boot_log", "; ".join(bad_boot[:4])))
+    if s.get("begin", {}).get("watchdog_reboot"):
+        warn.append(("watchdog_reboot", "last reset was the watchdog"))
+
+    io = s.get("io", {})
+    if io and not io.get("r15"):
+        fail.append(("r15_missing", "usb mux select pulldown reads high: the mux floats whenever we aren't driving it (bootloader)"))
+    if io and not io.get("host"):
+        warn.append(("usb_host_absent", f"on serial but the mux arbiter sees no host (mux {MUX_STATES.get(io.get('mux'), io.get('mux'))})"))
+
+    pio = s.get("pio", {})
+    for port in ("port0", "port1"):
+        if pio and not pio.get(port):
+            fail.append((f"{port}_pio_unreserved", "swapped-uart PIO state machines not claimed (see boot log)"))
+    if pio and pio.get("touch_sm", -1) < 0:
+        fail.append(("touch_pio_failed", "no PIO state machine for the pads (see boot log)"))
+
+    mic = s.get("mic", {})
+    if not mic.get("streaming"):
+        fail.append(("mic_not_streaming", "nothing subscribed to the microphone"))
+    elif mic.get("samples", 0) < LIMITS["mic_samples"]:
+        fail.append(("mic_no_data", f"{mic.get('samples')} samples in {mic.get('frames')} frames (PDM init failed?)"))
+    elif mic.get("min") == mic.get("max"):
+        fail.append(("mic_stuck", f"every sample {mic.get('min')}"))
+    elif mic.get("rms", 0) > LIMITS["mic_rms_saturated"] or abs(mic.get("mean", 0)) > LIMITS["mic_mean_abs"]:
+        fail.append(("mic_saturated", f"rms {mic.get('rms')} mean {mic.get('mean')}"))
+    else:
+        if mic.get("dark_samples", 0) < LIMITS["mic_dark_samples"]:
+            warn.append(("mic_no_dark_phase", f"only {mic.get('dark_samples')} samples with the panel unpowered"))
+        elif mic.get("dark_rms", 0) < LIMITS["mic_rms_silent"]:
+            warn.append(("mic_silent", f"panel-off rms {mic.get('dark_rms')}"))
+
+    touch = s.get("touch", {})
+    if touch:
+        pads = touch.get("pads", TOUCH_PADS)
+        idle = touch.get("idle_state", 0)
+        for n in range(pads):
+            if idle & (1 << n):
+                fail.append((f"touch{n}_stuck", "read touched while nobody should have been touching it"))
+        cap = touch.get("cap_ns", 0)
+        if touch.get("measured") == 0:
+            warn.append(("touch_not_measured", "pad discharge skipped (no touch state machine)"))
+        if touch.get("rejected", 0) > LIMITS["pad_rejected"]:
+            warn.append(("touch_reps_rejected", f"{touch.get('rejected')} discharge reps past the {touch.get('cap_ns')}ns cap"))
+        for n in range(pads):
+            lo, med, hi = touch.get(f"pad{n}_min"), touch.get(f"pad{n}_med"), touch.get(f"pad{n}_max")
+            p90 = touch.get(f"pad{n}_p90", hi)
+            if med is None or not touch.get("measured"):
+                continue
+            if lo == 0 and hi == 0:
+                warn.append((f"touch{n}_never_charged", "pad reads low even when driven: shorted to ground?"))
+            elif cap and lo >= cap:
+                warn.append((f"touch{n}_never_discharged", f"pad stayed high for {cap}ns: shorted high, or touched?"))
+            elif not rng(med, LIMITS["pad_med_ns"]):
+                warn.append((f"touch{n}_out_of_range", f"discharge {med}ns (min {lo} max {hi}), expected {LIMITS['pad_med_ns'][0]}-{LIMITS['pad_med_ns'][1]}"))
+            elif p90 - lo > LIMITS["pad_spread_ns"]:
+                warn.append((f"touch{n}_unsteady", f"discharge min {lo}ns p90 {p90}ns max {hi}ns: touched or disturbed mid-measurement?"))
+    return fail, warn
+
+
+def test_unit(port, info, ident):
+    time.sleep(BOOT_SETTLE_S)
+    started = time.time()
+    ser, error = open_port(port)
+    sections, boot, transcript = {}, [], []
+    if ser:
+        sections, boot, transcript, error = run_test(ser)
+        if error and not transcript and error.startswith("port error"):
+            ser.close()
+            time.sleep(1.0)
+            ser, error = open_port(port)
+            if ser:
+                sections, boot, transcript, error = run_test(ser)
+    sn = sections.get("begin", {}).get("sn") or info.serial_number or "unknown"
+    sn = str(sn).upper()
+    fail, warn = ([], []) if error else judge(sections, boot)
+    verdict = "ERROR" if error else ("FAIL" if fail else ("WARN" if warn else "PASS"))
+    shown = ser is not None and show_verdict(ser, "FAIL" if verdict == "ERROR" else verdict)
+    if ser:
+        ser.close()
+    record = dict(time=datetime.datetime.now().isoformat(timespec="seconds"), sn=sn, port=port, verdict=verdict, error=error,
+                  seconds=round(time.time() - started, 1), failures=[list(f) for f in fail], warnings=[list(w) for w in warn],
+                  measurements=sections, boot_log=boot, **ident)
+    os.makedirs(os.path.join(RESULTS_DIR, "raw"), exist_ok=True)
+    with print_lock:
+        with open(RESULTS, "a") as f:
+            f.write(json.dumps(record) + "\n")
+    with open(os.path.join(RESULTS_DIR, "raw", f"{sn}_{datetime.datetime.now():%Y%m%d_%H%M%S}.log"), "w") as f:
+        f.write("\n".join(transcript) + "\n")
+    color = {"PASS": "\033[32m", "WARN": "\033[33m", "FAIL": "\033[31m", "ERROR": "\033[35m"}[verdict] if sys.stdout.isatty() else ""
+    lines = [f"{color}{verdict}\033[0m" if color else verdict, f"unit {sn[-6:]} ({port.rsplit('usbmodem', 1)[-1]}, {record['seconds']}s)"]
+    touch = sections.get("touch", {})
+    pads = [touch.get(f"pad{n}_med") for n in range(touch.get("pads", 0))]
+    if pads and all(isinstance(p, (int, float)) for p in pads):
+        lines.append("pads " + "/".join(str(p) for p in pads) + "ns")
+    mic = sections.get("mic", {})
+    if isinstance(mic.get("dark_rms"), (int, float)):
+        lines.append(f"mic rms {mic.get('dark_rms')} dark / {mic.get('rms')} lit")
+    detail = [f"   error: {error}"] if error else []
+    detail += [f"   FAIL {flag}: {d}" for flag, d in fail] + [f"   warn {flag}: {d}" for flag, d in warn]
+    if not shown and not error:
+        detail.append("   (the unit didn't acknowledge the verdict blink)")
+    log(" ".join(lines) + ("\n" + "\n".join(detail) if detail else ""))
+
+
+def send_to_bootloader(port):
+    """The firmware's BOOTSEL command (rp2040.rebootToBootloader). Not the 1200-baud touch: that has left a penta's USB
+    dead (tty enumerated, serial silent, no RPI-RP2) while the board kept running; rebootToBootloader has re-enumerated
+    fine every time. Older firmware with single-letter commands reboots on the leading 'B' of the same line."""
+    try:
+        ser = serial.Serial(port, 115200, timeout=0.25)
+        ser.write(b"\nBOOTSEL\n")
+        ser.flush()
+        ser.close()
+        log(f"{port}: sent BOOTSEL, rebooting into the bootloader")
+    except (serial.SerialException, OSError) as e:
+        log(f"{port}: couldn't send BOOTSEL: {e}")
+
+
+def run(args):
+    image = None if args.no_flash else resolve_image(args.target, build=not args.no_build)
+    ident = firmware_identity(image)
+    families = image_families(image) if image else set()
+    if image:
+        log(f"image: {image} (built for {'/'.join(sorted(families)) or 'unknown chip'})")
+    known = set(unit_ports()) if args.new_only else set()
+    if known:
+        log(f"leaving {len(known)} already-connected unit(s) alone")
+    # --reflash: running units get sent to the bootloader ONE AT A TIME (several boards re-enumerating together can take a hub down)
+    touched = {}  # port -> when we kicked it into the bootloader; it gets tested when it comes back on the new build
+    to_touch = [d for d in sorted(unit_ports()) if d not in known] if (args.reflash and image) else []
+    known |= set(to_touch)
+    log("waiting for boards (BOOTSEL volumes to flash, pentas on serial to test) -- ^C to stop")
+    skip = set()
+    deadline = time.monotonic() + args.seconds if args.seconds else None
+    try:
+        while deadline is None or time.monotonic() < deadline or threading.active_count() > 1 or to_touch or touched:
+            if image:
+                vols = bootloader_volumes()
+                skip &= set(vols)
+                for vol in vols:
+                    if vol not in skip and os.path.isdir(vol) and not (image_fits(vol, families) and flash(vol, image)):
+                        skip.add(vol)
+            if to_touch and not touched and not bootloader_volumes() and threading.active_count() == 1:
+                dev = to_touch.pop(0)
+                send_to_bootloader(dev)
+                touched[dev] = {"t": time.monotonic(), "gone": False}
+            ports = unit_ports()
+            known &= set(ports) | set(to_touch)  # a port that went away and came back is a rebooted (or another) unit: test it again
+            for dev, state in list(touched.items()):
+                age = time.monotonic() - state["t"]
+                if dev not in ports and age > 45:
+                    log(f"{dev}: never came back after the bootloader reboot -- replug it (it will be flashed/tested when it shows up)")
+                    del touched[dev]
+                elif dev not in ports:
+                    state["gone"] = True          # in the bootloader; `known` has dropped it, so its return gets tested
+                elif state["gone"] or age > 40:
+                    del touched[dev]              # back on the new build (or the reboot never took)
+                elif age > 4 and not bootloader_volumes():
+                    known.discard(dev)            # flashing blocked this loop long enough to vanish AND return unseen
+                    del touched[dev]
+            for dev, info in ports.items():
+                if dev not in known:
+                    known.add(dev)
+                    threading.Thread(target=test_unit, args=(dev, info, ident), daemon=True).start()
+            time.sleep(POLL_S)
+    except KeyboardInterrupt:
+        print()
+    report(argparse.Namespace(all=False, since=datetime.date.today().isoformat()))
+
+
+# ---- report ---------------------------------------------------------------------------------------------------------
+
+def load_records(since=None):
+    records = []
+    if os.path.exists(RESULTS):
+        for line in open(RESULTS):
+            try:
+                r = json.loads(line)
+                if not since or r["time"] >= since:
+                    records.append(r)
+            except (ValueError, KeyError):
+                pass
+    return records
+
+
+def report(args):
+    records = load_records(getattr(args, "since", None))
+    if not records:
+        print("no results" + (f" since {args.since}" if getattr(args, "since", None) else ""))
+        return
+    runs = len(records)
+    errors = [r for r in records if r["verdict"] == "ERROR"]
+    tested = [r for r in records if r["verdict"] != "ERROR"]
+    if not args.all:
+        latest = {}
+        for r in tested:  # file order is time order
+            latest[r["sn"]] = r
+        repeat = len(tested) - len(latest)
+        tested = list(latest.values())
+    n = len(tested)
+    print(f"{n} {'runs' if args.all else 'units'} ({runs} runs logged" + ("" if args.all else f", {repeat} repeat runs folded into each unit's latest")
+          + (f", {len(errors)} runs with no test response" if errors else "") + ")")
+    counts = {v: sum(r["verdict"] == v for r in tested) for v in ("PASS", "WARN", "FAIL")}
+    print(f"  pass {counts['PASS']}   warnings only {counts['WARN']}   fail {counts['FAIL']}\n")
+    for kind, title in (("failures", "failures"), ("warnings", "warnings")):
+        flags = {}
+        for r in tested:
+            for flag, detail in r[kind]:
+                flags.setdefault(flag, []).append((r["sn"], detail))
+        if flags:
+            print(f"{title}:")
+            for flag, hits in sorted(flags.items(), key=lambda kv: -len(kv[1])):
+                print(f"  {len(hits):3d} of {n}  {flag:28s} " + ", ".join(sn[-6:] for sn, _ in hits[:8]) + (" ..." if len(hits) > 8 else ""))
+            print()
+    print("spread (min / median / max):")
+    rows = [("mic rms dark", "mic", "dark_rms"), ("mic rms lit", "mic", "rms"), ("mic mean", "mic", "mean"), ("mic peak", "mic", "peak"),
+            ("mic samples", "mic", "samples")]
+    rows += [(f"pad{p} ns", "touch", f"pad{p}_med") for p in range(TOUCH_PADS)] + [("test seconds", None, "seconds")]
+    for label, section, key in rows:
+        vals = []
+        for r in tested:
+            m = r["measurements"].get(section, {}) if section else r
+            v = m.get(key)
+            if isinstance(v, (int, float)):
+                vals.append(v)
+        if vals:
+            print(f"  {label:16s} {min(vals):9.1f} {statistics.median(vals):9.1f} {max(vals):9.1f}   (n={len(vals)})")
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "report":
+        ap = argparse.ArgumentParser(prog="hwtest report")
+        ap.add_argument("--all", action="store_true", help="count every run instead of each unit's latest")
+        ap.add_argument("--since", help="only runs at or after this ISO date/time, e.g. 2026-09-22")
+        return report(ap.parse_args(sys.argv[2:]))
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog=__doc__.split("\n", 1)[1])
+    ap.add_argument("target", nargs="?", help="PlatformIO env name (e.g. v2) or a .uf2 file")
+    ap.add_argument("--no-build", action="store_true", help="use the env's existing firmware.uf2")
+    ap.add_argument("--no-flash", action="store_true", help="don't flash anything, only test")
+    ap.add_argument("--new-only", action="store_true", help="don't test the units already connected at startup")
+    ap.add_argument("--reflash", action="store_true", help="send the pentas already running to the bootloader so they get flashed too")
+    ap.add_argument("--for", dest="seconds", type=float, help="run this many seconds, then report and exit")
+    args = ap.parse_args()
+    if not args.target and not args.no_flash:
+        ap.error("give a PlatformIO env / .uf2 to flash, or --no-flash")
+    run(args)
+
+
+if __name__ == "__main__":
+    main()
